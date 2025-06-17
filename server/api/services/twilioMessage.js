@@ -27,7 +27,7 @@ const twilioMessageServices = {
     },
 
     async authTempate(phoneNumber) {
-        return await commonTempMessage(phoneNumber, 'HX177a99a58923feacbd16d0f3937c8c96');
+        return await commonTempMessage(phoneNumber, 'HXad7316d48adb1ce3dd5ffa8b8c7e5e11');
     },
 
     async signupConfirmationTemp(phoneNumber, data) {
@@ -68,9 +68,9 @@ const twilioMessageServices = {
             const message = await client.messages.create({
                 from: `whatsapp:${twilioNumber}`,
                 to: `whatsapp:${phoneNumber}`,
-                contentSid: 'HX6d6d5828011c7c324522efdd6de9a3c5',
+                contentSid: 'HX102c1b867daf302179f75dc40c8f1be9',
                 contentVariables: JSON.stringify({
-                    "1": user.name,
+                    "1": user.name ? `${user.name} 👋` : "friend 👋",
                 })
 
             });
@@ -86,13 +86,15 @@ const twilioMessageServices = {
         try {
             const user = await userServices.find({ whatsappPhone: phoneNumber });
 
+            const statusMessage = status === "rejected" ? "we need to update some information" : "let's complete your verification";
+
             const message = await client.messages.create({
                 from: `whatsapp:${twilioNumber}`,
                 to: `whatsapp:${phoneNumber}`,
                 contentSid: 'HX1d56f3a15ada4a9466e919b57e5d2877',
                 contentVariables: JSON.stringify({
-                    "1": user.name,
-                    "2": status // "incomplete" or "rejected"
+                    "1": user.name ? `${user.name}` : "there",
+                    "2": statusMessage
                 })
             });
             console.log('Message sent! SID:', message.sid);
@@ -147,6 +149,11 @@ const twilioMessageServices = {
     deshboardWithdrawTempMessage: async (phoneNumber, balance) => {
         const contentSid = 'HXfdb137555f8de5dfb8c8a6556888b60f';
         return await commonTempMessage(phoneNumber, contentSid, { "1": String(balance || 0) });
+    },
+
+    transferConfirmationTempMessage: async (phoneNumber, amount, availableBalance, source, destination) => {
+        const contentSid = 'HX188eb2c8ee56d0cb9f46aef032546bd0';
+        return await commonTempMessage(phoneNumber, contentSid, { "1": String(amount || 0), "2": String(availableBalance || 0), "3": source, "4": destination });
     },
 
 

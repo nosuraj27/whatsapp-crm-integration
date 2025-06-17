@@ -17,13 +17,8 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-import admin from 'firebase-admin';
-import serviceAccount from '../../config/serviceAccountKey.json';
 import userServices from '../api/services/user';
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-});
 
 
 
