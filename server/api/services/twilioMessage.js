@@ -26,23 +26,11 @@ const twilioMessageServices = {
         }
     },
 
-    async mainMenubarTempMessage(phoneNumber) {
-        try {
-            const message = await client.messages.create({
-                from: `whatsapp:${twilioNumber}`,
-                to: `whatsapp:${phoneNumber}`,
-                contentSid: 'HX177a99a58923feacbd16d0f3937c8c96',
-                // contentSid: 'HX3cf411405fcd4588c79899a13703a7d3',
-            });
-            console.log('Message sent! SID:', message.sid);
-            return message.sid;
-        } catch (e) {
-            console.error('Error sending main menubar message:', e);
-            throw new Error('Failed to send main menubar message');
-        }
+    async authTempate(phoneNumber) {
+        return await commonTempMessage(phoneNumber, 'HX177a99a58923feacbd16d0f3937c8c96');
     },
 
-    async signupConfirmationTempMessage(phoneNumber, data) {
+    async signupConfirmationTemp(phoneNumber, data) {
         // If your template has variables, pass them here
         return client.messages.create({
             from: `whatsapp:${twilioNumber}`,
@@ -70,21 +58,6 @@ const twilioMessageServices = {
         } catch (e) {
             console.error('Error sending text message:', e);
             throw new Error('Failed to send text message');
-        }
-    },
-
-    mainMenuTempMessage: async (phoneNumber) => {
-        try {
-            const message = await client.messages.create({
-                from: `whatsapp:${twilioNumber}`,
-                to: `whatsapp:${phoneNumber}`,
-                contentSid: 'HXc2956947a3f302c9d9aae8302c6de87b',
-            });
-            console.log('Message sent! SID:', message.sid);
-            return message.sid;
-        } catch (e) {
-            console.error('Error sending main menu message:', e);
-            throw new Error('Failed to send main menu message');
         }
     },
 

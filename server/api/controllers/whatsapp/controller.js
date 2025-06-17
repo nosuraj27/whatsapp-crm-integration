@@ -43,7 +43,7 @@ export class userController {
             console.log(`Media: ${numMedia > 0 ? mediaUrl : 'None'}`);
 
             try {
-                // Load session from database or initialize new one
+
                 let session = await _getSessionFromDb(from);
 
                 if (['hi', 'hii', 'hello', 'hey bbcorp', 'menu'].includes(msg?.toLowerCase())) {
@@ -53,7 +53,7 @@ export class userController {
                         return await twilioMessageServices.languageTempMessage(from);
                     }
 
-                    // NOTE Check if user exists
+                    // NOTE If user sends "hi" or similar, check if they are already logged in
                     try {
                         const user = await userServices.find({ whatsappPhone: from });
                         console.log(`User found: ${user ? user.name : 'No user found'}`);
@@ -63,9 +63,8 @@ export class userController {
                                 const loginRes = await crmApiServices.login(from, user.email, user.password);
 
                                 if (!loginRes.token) {
-                                    return await twilioMessageServices.mainMenubarTempMessage(from);
+                                    return await twilioMessageServices.authTempate(from);
                                 }
-
                                 session.data.token = loginRes.token;
 
                                 try {
@@ -100,7 +99,7 @@ export class userController {
                                 }
                             } catch (error) {
                                 console.error('Login error:', error);
-                                return await twilioMessageServices.mainMenubarTempMessage(from);
+                                return await twilioMessageServices.authTempate(from);
                             }
                         } else {
                             // No user found, show language selection
@@ -127,7 +126,7 @@ export class userController {
                     if (msg?.toLowerCase() === 'language_english_list' || buttonPayload === 'bbcorp_language_english') {
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainMenuTempMessage(from);
+                        return await twilioMessageServices.authTempate(from);
                     } else {
                         twiml.message(`❌ Sorry, only English is supported at the moment. Please select English to continue.`);
                     }
@@ -238,10 +237,7 @@ export class userController {
                     } else {
                         session.step = 'signup-review';
                         await _saveSessionToDb(from, session);
-                        // twiml.message(
-                        //     `Thank you for your information,\nBelow is your information:\nFirst Name: ${session.data.firstName}\nLast Name: ${session.data.lastName}\nEmail: ${session.data.email}\nPhone number: ${session.data.phone}\nPassword: ${session.data.password}".`
-                        // );
-                        return await twilioMessageServices.signupConfirmationTempMessage(from, session.data);
+                        return await twilioMessageServices.signupConfirmationTemp(from, session.data);
                     }
                 }
                 else if (session.step === 'signup-review') {
@@ -1201,7 +1197,7 @@ export class userController {
                     return twilioMessageServices.createTradingAccountTempMessage(from);
                 }
 
-                // NOTE Create Demo Account
+                // NOTE CREATE DEMO ACCOUNT
                 else if (buttonPayload === 'create_trading_account_section_demo' || msg?.toLowerCase() === 'create_trading_account_section_demo') {
                     session.step = 'account-create-demo-name';
                     await _saveSessionToDb(from, session);
@@ -1249,7 +1245,7 @@ export class userController {
                     }
                 }
 
-                // NOTE Create Real Account
+                // NOTE CREATE REAL ACCOUNT
                 else if (buttonPayload === 'create_trading_account_section_real' || msg?.toLowerCase() === 'create_trading_account_section_real') {
                     session.step = 'account-create-real-name';
                     await _saveSessionToDb(from, session);
@@ -1380,25 +1376,8 @@ export class userController {
                     return _sendResponse(res, twiml);
                 }
 
-                else if (buttonPayload === 'bbcorp_deposit' || msg?.toLowerCase() === 'deposit') {
-                    return await twilioMessageServices.depositOptionsTempMessage(from);
-                }
-
-
-                else if (buttonPayload === 'bbcorp_withdraw' || msg?.toLowerCase() === 'withdraw') {
-                    return await twilioMessageServices.withdrawFromTempMessage(from);
-                }
-
-
-                else if (buttonPayload === 'bbcorp_transfer' || msg?.toLowerCase() === 'transfer') {
-                    return await twilioMessageServices.transferFromTempMessage(from);
-                }
-
-
-
-
+                // NOTE VIEW ACCOUNTS FLOW
                 else if (buttonPayload === 'bbcorp_view_accounts' || msg?.toLowerCase() === 'menu_list_create_trading_account') {
-                    // NOTE Get accounts and display them
                     try {
                         const realAccounts = await crmApiServices.getAccounts(from, 'real') || [];
                         const demoAccounts = await crmApiServices.getAccounts(from, 'demo') || [];
@@ -1430,142 +1409,6 @@ export class userController {
                     } catch (error) {
                         console.error("Error fetching accounts:", error);
                         twiml.message(`❌ Error fetching your accounts. Please try again or contact support if the issue persists.`);
-                    }
-                }
-
-
-                // TRANSFER FLOW
-                else if (session.step === 'transfer-from-selection') {
-                    if (!msg) {
-                        twiml.message(`❌ Please select a valid source account.`);
-                    } else {
-                        // Handle transfer from selection - wallet or account
-                        session.data.transferFrom = msg;
-                        session.step = 'transfer-to-selection';
-                        await _saveSessionToDb(from, session);
-
-                        if (!session.data.accounts || session.data.accounts.length === 0) {
-                            twiml.message(`❌ No accounts available for transfer. Please contact support.`);
-                            session.step = 'main-menu';
-                            await _saveSessionToDb(from, session);
-                        } else {
-                            twiml.message(`To which account would you like to transfer?\n\n${_getAccountsListText(session.data.accounts)}`);
-                        }
-                    }
-                }
-                else if (session.step === 'transfer-to-selection') {
-                    if (!msg) {
-                        twiml.message(`❌ Please select a valid destination account.`);
-                    } else {
-                        session.data.transferTo = msg;
-                        session.step = 'transfer-amount';
-                        await _saveSessionToDb(from, session);
-                        twiml.message(`What is the amount you would like to transfer enter only amount (ex: 50)`);
-                    }
-                }
-                else if (session.step === 'transfer-amount') {
-                    const amount = parseFloat(msg.replace(/[^\d.]/g, ''));
-                    if (isNaN(amount) || amount <= 0) {
-                        twiml.message(`❌ Please enter a valid amount (number greater than 0).`);
-                    } else {
-                        try {
-                            // Here you would make an API call to execute the transfer
-                            session.data.transferAmount = amount;
-                            session.step = 'main-menu';
-                            await _saveSessionToDb(from, session);
-                            twiml.message(`✅ You have successfully transferred $${amount} from your ${session.data.transferFrom} to ${session.data.transferTo}.`);
-                        } catch (error) {
-                            console.error("Transfer error:", error);
-                            twiml.message(`❌ Transfer failed. Please check your balance and try again.`);
-                        }
-                    }
-                }
-
-                //NOTE WITHDRAW FLOW
-                else if (session.step === 'withdraw-from-selection') {
-                    if (!msg) {
-                        twiml.message(`❌ Please select a valid withdrawal source.`);
-                    } else {
-                        session.data.withdrawFrom = msg;
-                        session.step = 'withdraw-method';
-                        await _saveSessionToDb(from, session);
-                        twiml.message(`To which account would you like to withdraw?\n\nUSDT\nWHISH\nBank Transfer`);
-                    }
-                }
-                else if (session.step === 'withdraw-method') {
-                    const validMethods = ['usdt', 'whish', 'bank', 'bank transfer'];
-                    if (!validMethods.includes(msg?.toLowerCase())) {
-                        twiml.message(`❌ Invalid withdrawal method. Please select USDT, WHISH, or Bank Transfer.`);
-                    } else {
-                        session.data.withdrawMethod = msg;
-                        session.step = 'withdraw-amount';
-                        await _saveSessionToDb(from, session);
-                        twiml.message(`What's the amount you would like to withdraw? Please enter amount (ex: 50)`);
-                    }
-                }
-                else if (session.step === 'withdraw-amount') {
-                    const amount = parseFloat(msg.replace(/[^\d.]/g, ''));
-                    if (isNaN(amount) || amount <= 0) {
-                        twiml.message(`❌ Please enter a valid amount (number greater than 0).`);
-                    } else {
-                        session.data.withdrawAmount = amount;
-
-                        if (session.data.withdrawMethod.toLowerCase().includes('usdt')) {
-                            session.step = 'withdraw-address';
-                            await _saveSessionToDb(from, session);
-                            twiml.message(`To which USDT TRC20 address would you like to withdraw?`);
-                        } else if (session.data.withdrawMethod.toLowerCase().includes('whish')) {
-                            session.step = 'withdraw-confirmation';
-                            await _saveSessionToDb(from, session);
-                            twiml.message(`Please confirm the withdrawal of ${amount}$ to WHISH.\n\nType "confirm" to proceed.`);
-                        } else {
-                            session.step = 'withdraw-bank-details';
-                            await _saveSessionToDb(from, session);
-                            twiml.message(`Please provide your bank details for the transfer.`);
-                        }
-                    }
-                }
-                else if (session.step === 'withdraw-address') {
-                    if (!msg || msg.length < 10) {
-                        twiml.message(`❌ Please enter a valid USDT address.`);
-                    } else {
-                        session.data.withdrawAddress = msg;
-                        session.step = 'withdraw-confirmation';
-                        await _saveSessionToDb(from, session);
-                        twiml.message(`Please confirm the details:\n\nWithdraw\nTo: USDT Wallet\nAddress: ${msg}\nType: TRC20\nAmount: ${session.data.withdrawAmount}$\n\nPlease press confirm to proceed, if it is incorrect please press restart or go back if you would like to cancel`);
-                    }
-                }
-                else if (session.step === 'withdraw-bank-details') {
-                    if (!msg || msg.length < 10) {
-                        twiml.message(`❌ Please provide complete bank details (account number, bank name, etc).`);
-                    } else {
-                        session.data.bankDetails = msg;
-                        session.step = 'withdraw-confirmation';
-                        await _saveSessionToDb(from, session);
-                        twiml.message(`Please confirm the details:\n\nWithdraw\nTo: Bank Account\nDetails: ${msg}\nAmount: ${session.data.withdrawAmount}$\n\nType "confirm" to proceed, "restart" to begin again, or "back" to cancel.`);
-                    }
-                }
-                else if (session.step === 'withdraw-confirmation') {
-                    if (msg?.toLowerCase() === 'confirm' || msg?.toLowerCase() === 'proceed') {
-                        try {
-                            // Here you would make an API call to execute the withdrawal
-                            session.step = 'main-menu';
-                            await _saveSessionToDb(from, session);
-                            twiml.message(`✅ Withdrawal request submitted successfully. You will receive a confirmation once processed.`);
-                        } catch (error) {
-                            console.error("Withdrawal error:", error);
-                            twiml.message(`❌ Withdrawal failed. Please try again later or contact support.`);
-                        }
-                    } else if (msg?.toLowerCase() === 'restart') {
-                        session.step = 'withdraw-from-selection';
-                        await _saveSessionToDb(from, session);
-                        twiml.message(`🔄 Let's restart your withdrawal. From which account would you like to withdraw?`);
-                    } else if (msg?.toLowerCase() === 'go back' || msg?.toLowerCase() === 'back') {
-                        session.step = 'main-menu';
-                        await _saveSessionToDb(from, session);
-                        twiml.message(`Withdrawal cancelled. Returning to main menu.`);
-                    } else {
-                        twiml.message(`❌ Invalid option. Please type "confirm" to proceed, "restart" to begin again, or "back" to cancel.`);
                     }
                 }
 
