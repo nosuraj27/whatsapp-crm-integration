@@ -1333,6 +1333,11 @@ export class userController {
                     }
                 }
 
+                else if (buttonPayload === 'create_trading_account_section_go_back' || msg?.toLowerCase() === 'create_trading_account_section_go_back') {
+                    session.step = 'main-menu';
+                    await _saveSessionToDb(from, session);
+                    return await twilioMessageServices.mainListTempMessage(from);
+                }
 
                 // NOTE REFER AND EARN FLOW
                 else if (buttonPayload === 'menu_list_refer_and_earn' || msg?.toLowerCase() === 'menu_list_refer_and_earn') {

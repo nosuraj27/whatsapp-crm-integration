@@ -123,7 +123,7 @@ const twilioMessageServices = {
     },
 
     createTradingAccountTempMessage: async (phoneNumber) => {
-        let contentSid = 'HX98cd7d761dd81939957695dfbb292f73';
+        let contentSid = 'HX5fb229f372cdb25bd1da1ab5762c1843';
         return await commonTempMessage(phoneNumber, contentSid)
     },
     createTradingAccountRealProductTempMessage: async (phoneNumber) => {
