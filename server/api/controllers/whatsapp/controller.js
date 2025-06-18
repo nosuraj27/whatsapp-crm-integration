@@ -1020,7 +1020,7 @@ export class userController {
                 else if (buttonPayload === 'dashboard_section_option_withdraw' || msg?.toLowerCase() === 'menu_list_withdraw') {
                     const wallets = await crmApiServices.getWallet(from);
                     if (!wallets || wallets.length === 0) {
-                        twiml.message(`❌ You don't have any wallets available for withdrawal. Please create a wallet first.`);
+                        await twilioMessageServices.sendTextMessage(from, `❌ You don't have any wallets available for withdrawal. Please create a wallet first.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
                         return await twilioMessageServices.mainListTempMessage(from);
@@ -1225,17 +1225,17 @@ export class userController {
                 else if (buttonPayload === 'create_trading_account_section_demo' || msg?.toLowerCase() === 'create_trading_account_section_demo') {
                     session.step = 'account-create-demo-name';
                     await _saveSessionToDb(from, session);
-                    twiml.message(`Let’s start! Please tell me a name for your *demo account* (1/2).`);
+                    await twilioMessageServices.sendTextMessage(from, `Let’s start! Please tell me a name for your *demo account* (1/2).`);
                 }
 
                 else if (session.step === 'account-create-demo-name') {
                     if (!msg || msg.trim().length < 2) {
-                        twiml.message(`❌ Name too short. Please enter at least 2 characters.`);
+                        await twilioMessageServices.sendTextMessage(from, `❌ Name too short. Please enter at least 2 characters.`);
                     } else {
                         session.data.account_demo_name = msg.trim();
                         session.step = 'account-create-demo-balance';
                         await _saveSessionToDb(from, session);
-                        twiml.message(
+                        await twilioMessageServices.sendTextMessage(from,
                             `Great! Now enter the *starting balance* for “${session.data.account_demo_name}” ` +
                             `(2/2). Example: 100`
                         );
@@ -1245,7 +1245,7 @@ export class userController {
                 else if (session.step === 'account-create-demo-balance') {
                     const amount = parseFloat(msg);
                     if (Number.isNaN(amount) || amount <= 0) {
-                        twiml.message(`🤔 We need a positive number for your balance. Let's try again!`);
+                        await twilioMessageServices.sendTextMessage(from, `🤔 We need a positive number for your balance. Let's try again!`);
                     } else {
                         const { account_demo_name: name } = session.data;
                         try {
@@ -1255,7 +1255,7 @@ export class userController {
                             });
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            twiml.message(
+                            await twilioMessageServices.sendTextMessage(from,
                                 `🎉 Woohoo! Your demo account "${name}" has been created with a balance of $${amount}! Ready to start trading?`
                             );
                             await twilioMessageServices.createTradingAccountTempMessage(from);
@@ -1264,7 +1264,7 @@ export class userController {
                             console.error('Demo account creation error:', error);
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            twiml.message(
+                            await twilioMessageServices.sendTextMessage(from,
                                 `❌ ${error?.message ?? 'Failed to create demo account. Please try again later.'}`
                             );
                             await twilioMessageServices.createTradingAccountTempMessage(from);
@@ -1276,13 +1276,13 @@ export class userController {
                 else if (buttonPayload === 'create_trading_account_section_real' || msg?.toLowerCase() === 'create_trading_account_section_real') {
                     session.step = 'account-create-real-name';
                     await _saveSessionToDb(from, session);
-                    twiml.message(`Let’s start! Please enter a *name* for your real account (1/2).`);
+                    await twilioMessageServices.sendTextMessage(from, `Let’s start! Please enter a *name* for your real account (1/2).`);
                 }
 
                 else if (session.step === 'account-create-real-name') {
                     const name = msg?.trim();
                     if (!name || name.length < 2) {
-                        twiml.message(`❌ Name too short. Please enter at least 2 characters.`);
+                        await twilioMessageServices.sendTextMessage(from, `❌ Name too short. Please enter at least 2 characters.`);
                     } else {
                         session.data.account_real_name = name;
                         session.step = 'account-create-real-product';
@@ -1308,7 +1308,7 @@ export class userController {
 
                     const selected = productMap[productPayload];
                     if (!selected) {
-                        twiml.message(
+                        await twilioMessageServices.sendTextMessage(from,
                             `❌ Invalid choice. Please tap one of the buttons or reply with “Standard” or “Raw Spread”.`
                         );
                     } else {
@@ -1322,7 +1322,7 @@ export class userController {
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
 
-                            twiml.message(
+                            await twilioMessageServices.sendTextMessage(from,
                                 `✅ Your real trading account “${name}” (${selected.label}) has been created successfully.\n` +
                                 `You’ll receive the credentials by email shortly.`
                             );
@@ -1332,7 +1332,7 @@ export class userController {
                             console.error('Real account creation error:', error);
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            twiml.message(
+                            await twilioMessageServices.sendTextMessage(from,
                                 `❌ ${error?.message ?? 'Failed to create real account. Please try again later.'}`
                             );
                             await twilioMessageServices.createTradingAccountTempMessage(from);
@@ -1347,9 +1347,9 @@ export class userController {
                     try {
                         const referralLink = await crmApiServices.getReferalLink(from);
                         if (referralLink) {
-                            twiml.message(`🤝 Refer and Earn! Share this link with your friends to earn rewards: ${referralLink}`);
+                            await twilioMessageServices.sendTextMessage(from, `🤝 Refer and Earn! Share this link with your friends to earn rewards: ${referralLink}`);
                         } else {
-                            twiml.message(`❌ Unable to generate referral link at the moment. Please try again later.`);
+                            await twilioMessageServices.sendTextMessage(from, `❌ Unable to generate referral link at the moment. Please try again later.`);
                         }
 
                         session.step = 'main-menu';
@@ -1358,7 +1358,7 @@ export class userController {
                         return;
                     } catch (error) {
                         console.error("Error fetching referral link:", error);
-                        twiml.message(`❌ Error fetching your referral link. Please try again later.`);
+                        await twilioMessageServices.sendTextMessage(from, `❌ Error fetching your referral link. Please try again later.`);
                     }
                     return _sendResponse(res, twiml);
                 }
@@ -1366,17 +1366,17 @@ export class userController {
                 // NOTE HISTORY FLOW
                 else if (buttonPayload === 'menu_list_history' || msg?.toLowerCase() === 'menu_list_history') {
                     // This section is under development
-                    // twiml.message(`📜 Your transaction history is currently under development. Please check back later.`);
+                    // await twilioMessageServices.sendTextMessage(from,`📜 Your transaction history is currently under development. Please check back later.`);
                     try {
                         const history = await crmApiServices.getHistory(from);
                         if (history && history?.transactions?.length > 0) {
                             const historyMessage = history?.transactions?.map((item, index) => {
                                 return `${index + 1}. ${item.type} - ${item.status} - ${item.amount} ${item.currencyName} on ${new Date(item.createdAt).toLocaleDateString()} ${new Date(item.createdAt).toLocaleTimeString()}`;
                             }).join('\n');
-                            twiml.message(`📜 Your Transaction History:\n\n${historyMessage}`);
+                            await twilioMessageServices.sendTextMessage(from, `📜 Your Transaction History:\n\n${historyMessage}`);
 
                         } else {
-                            twiml.message(`📜 No transaction history found.`);
+                            await twilioMessageServices.sendTextMessage(from, `📜 No transaction history found.`);
                         }
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
@@ -1384,7 +1384,7 @@ export class userController {
                         return;
                     } catch (error) {
                         console.error("Error fetching history:", error);
-                        twiml.message(`❌ Error fetching your transaction history. Please try again later.`);
+                        await twilioMessageServices.sendTextMessage(from, `❌ Error fetching your transaction history. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
                         await twilioMessageServices.mainListTempMessage(from);
@@ -1403,7 +1403,7 @@ export class userController {
                         `5. *Trade*: Start trading with your funds.\n` +
                         `6. *Withdraw/Transfer*: Withdraw your profits or transfer funds between accounts.\n\n` +
                         `For any assistance, type "SUPPORT" to contact our support team.`;
-                    twiml.message(howToUseMessage);
+                    await twilioMessageServices.sendTextMessage(from, howToUseMessage);
                     session.step = 'main-menu';
                     await _saveSessionToDb(from, session);
                     await twilioMessageServices.mainListTempMessage(from);
@@ -1418,7 +1418,7 @@ export class userController {
                         `- *Phone*: +1234567890\n` +
                         `- *WhatsApp*: +1234567890\n\n` +
                         `Our support team is available 24/7 to assist you with any issues or questions you may have.`;
-                    twiml.message(supportMessage);
+                    await twilioMessageServices.sendTextMessage(from, supportMessage);
                     session.step = 'main-menu';
                     await _saveSessionToDb(from, session);
                     await twilioMessageServices.mainListTempMessage(from);
@@ -1481,9 +1481,13 @@ export class userController {
 
             } catch (error) {
                 console.error("Error processing message:", error);
-                let twiml = new (require('twilio').twiml.MessagingResponse)();
-                twiml.message(ERROR_MESSAGES.GENERIC);
-                return _sendResponse(res, twiml);
+                // let twiml = new (require('twilio').twiml.MessagingResponse)();
+                await twilioMessageServices.sendTextMessage(from, ERROR_MESSAGES.GENERIC);
+                session.step = 'main-menu';
+                await _saveSessionToDb(from, session);
+                return await twilioMessageServices.mainListTempMessage(from);
+
+                // return _sendResponse(res, twiml);
             }
 
             return _sendResponse(res, twiml);
