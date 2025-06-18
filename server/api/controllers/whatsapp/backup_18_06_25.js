@@ -7,9 +7,19 @@ import apiError from '../../../helper/apiError';
 import userServices from "../../services/user";
 import crmApiServices from "../../services/crmApi";
 import twilioMessageServices from "../../services/twilioMessage";
-import { apiLogHandler } from "../../../helper/apiLogHandler";
 const prisma = new PrismaClient();
 
+// const ERROR_MESSAGES = {
+//     GENERIC: "❌ Something went wrong. Please try again or type 'hi' to restart.",
+//     INVALID_INPUT: "❌ Invalid input. Please try again with a valid response.",
+//     SERVER_ERROR: "❌ Server error. Please try again later or contact support.",
+//     API_ERROR: "❌ Connection issue. Please try again later.",
+//     LOGIN_FAILED: "❌ Login failed. Please check your credentials and try again.",
+//     KYC_FAILED: "❌ KYC submission failed. Please try again.",
+//     UPLOAD_FAILED: "❌ Failed to upload your document. Please try again.",
+//     SESSION_ERROR: "❌ Session error. Please type 'hi' to restart.",
+// }
+// Update the ERROR_MESSAGES constant for more friendly error messages
 
 const ERROR_MESSAGES = {
     GENERIC: "😕 Something's not quite working right. Let's try again or type 'hi' to restart.",
@@ -42,8 +52,6 @@ export class userController {
             try {
 
                 let session = await _getSessionFromDb(from);
-                req.userId = from;
-                await apiLogHandler(req, { from, msg, mediaUrl, contentType, buttonPayload, numMedia, session });
 
                 // If no valid session exists, start from the beginning
                 if (!session) {
