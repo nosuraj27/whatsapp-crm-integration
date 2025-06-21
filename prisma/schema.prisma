@@ -72,6 +72,8 @@ model UserSession {
     createdAt     DateTime @default(now())
     updatedAt     DateTime @updatedAt
     whatsappPhone String
-    step          String
-    data          String // JSON data
+    step          String?
+    userFlow      String?
+    language      String?
+    data          String? // JSON data
 }

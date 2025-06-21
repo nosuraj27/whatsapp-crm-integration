@@ -103,13 +103,45 @@ const crmApiServices = {
         }
     },
 
-    async submitKycProfile(whatsappPhone, { birthday, city, country, postalCode, street }) {
+    async submitKycProfile(whatsappPhone, { birthday, city, country, postalCode, street, identityPath, utilityPath, acceptedAgreements }) {
         try {
 
             const token = await getToken(whatsappPhone);
+
+            let form = new FormData();
+            if (birthday) {
+                form.append('birthday', birthday);
+            }
+            if (city) {
+                form.append('city', city);
+            }
+            if (country) {
+                form.append('country', country);
+            }
+            if (postalCode) {
+                form.append('postalCode', postalCode);
+            }
+            if (street) {
+                form.append('street', street);
+            }
+
+            if (identityPath && typeof identityPath !== 'string' || fs.existsSync(identityPath)) {
+                form.append('identity', fs.createReadStream(identityPath));
+            }
+
+            if (utilityPath && typeof utilityPath === 'string' && fs.existsSync(utilityPath)) {
+                form.append('utilityBill', fs.createReadStream(utilityPath));
+            }
+
+            if (acceptedAgreements && Array.isArray(acceptedAgreements)) {
+                form.append('acceptedAgreements', JSON.stringify(acceptedAgreements));
+            }
+
+
             const res = await axios.post(
-                `${baseUrl}/api/client/agreements/profile-info`,
-                { birthday, city, country, postalCode, street },
+                // `${baseUrl}/api/client/agreements/profile-info`,
+                `${baseUrl}/api/client/agreements/submit-kyc`,
+                form,
                 { headers: { "x-auth-token": token, 'x-api-key': process.env.CRM_API_KEY } }
             );
             // console.log('KYC Profile Submission Response:', JSON.stringify(res.data, null, 2));
@@ -159,6 +191,20 @@ const crmApiServices = {
             return res.data.contract || [];
         } catch (e) {
             throw new Error('❌ Failed to fetch agreements.');
+        }
+    },
+
+    async getAvailableProducts(whatsappPhone) {
+        try {
+            const token = await getToken(whatsappPhone);
+            const res = await axios.get(
+                `${baseUrl}/api/client/trading_account/get-available-products`,
+                { headers: { "x-auth-token": token, 'x-api-key': process.env.CRM_API_KEY } }
+            );
+            return res.data.products || [];
+        } catch (e) {
+            console.error('Error fetching available products:', e?.response?.data || e.message);
+            return [];
         }
     },
 
@@ -321,7 +367,7 @@ const crmApiServices = {
         try {
             const token = await getToken(whatsappPhone);
             const res = await axios.get(
-                `${baseUrl}/api/client/transactions?page=1&pageSize=50`,
+                `${baseUrl}/api/client/transactions?page=1&pageSize=10`,
                 { headers: { "x-auth-token": token } }
             );
             return res.data;

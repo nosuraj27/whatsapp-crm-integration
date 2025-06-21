@@ -54,20 +54,19 @@ export class userController {
 
                 //NOTE LANGUAGE SELECTION AND MAIN MENU FLOW
                 if (session.step === 'language-selection') {
-                    if (['english_list', 'language_english',].includes(buttonPayload || msg?.toLowerCase())) {
+                    if (['language_english_list', 'bbcorp_language_english',].includes(buttonPayload || msg?.toLowerCase())) {
                         session.step = 'main-menu';
-                        session.language = 'english';
                         await _saveSessionToDb(from, session);
                         return await twilioMessageServices.authTempate(from);
                     }
-                    if (['language_urdu', 'language_urdu',].includes(buttonPayload || msg?.toLowerCase())) {
+                    if (['bbcorp_language_urdu', 'bbcorp_language_urdu',].includes(buttonPayload || msg?.toLowerCase())) {
 
                         await twilioMessageServices.sendTextMessage(from, `❌ Sorry, only English is supported at the moment. Please select English to continue.`);
                         session.step = 'language-selection';
                         await _saveSessionToDb(from, session);
                         return await twilioMessageServices.languageTempMessage(from);
                     }
-                    if (['language_ai'].includes(buttonPayload || msg?.toLowerCase())) {
+                    if (['bbcorp_language_ai', 'bbcorp_language_ai',].includes(buttonPayload || msg?.toLowerCase())) {
 
                         await twilioMessageServices.sendTextMessage(from, `❌ Sorry, only English is supported at the moment. Please select English to continue.`);
                         session.step = 'language-selection';
@@ -160,7 +159,7 @@ export class userController {
                     return await twilioMessageServices.sendTextMessage(from, `Let's start! Please share your first name only (1/6)`);
                 }
 
-                else if (['menu_list_logout', 'menu_list_logout', 'logout'].includes(buttonPayload || msg?.toLowerCase())) {
+                else if (['menu_list_logout', 'menu_list_logout',].includes(buttonPayload || msg?.toLowerCase())) {
                     // NOTE Logout flow
                     session = { step: 'language-selection', data: {} };
                     await _saveSessionToDb(from, session);
@@ -305,7 +304,7 @@ export class userController {
                                     } else if (checkKyc.status === 'pending') {
                                         session.step = 'kyc-complete';
                                         await _saveSessionToDb(from, session);
-                                        return await twilioMessageServices.sendTextMessage(from, `Your KYC is still pending. Please wait for approval. or type "logout" to logout.`);
+                                        return await twilioMessageServices.sendTextMessage(from, `Your KYC is still pending. Please wait for approval.`);
                                     } else if (checkKyc.pendingFields?.length > 0) {
                                         session.step = 'kyc-start';
                                         await _saveSessionToDb(from, session);
@@ -314,6 +313,7 @@ export class userController {
                                         // KYC is approved, proceed to main menu
                                         session.step = 'main-menu';
                                         await _saveSessionToDb(from, session);
+                                        await twilioMessageServices.sendTextMessage(from, `✅ Welcome to BBCorp Portal`);
                                         return await twilioMessageServices.mainListTempMessage(from);
                                     }
                                 } catch (error) {
@@ -321,6 +321,7 @@ export class userController {
                                     // If KYC check fails, still show main menu
                                     session.step = 'main-menu';
                                     await _saveSessionToDb(from, session);
+                                    await twilioMessageServices.sendTextMessage(from, `✅ Welcome to BBCorp Portal`);
                                     return await twilioMessageServices.mainListTempMessage(from);
                                 }
                             } else {
@@ -418,7 +419,7 @@ export class userController {
                 else if (session.step === 'kyc-upload-utility') {
                     if (msg?.toLowerCase() === 'skip' || buttonPayload === 'skip_kyc_address_proof') {
                         session.data.utilityPath = null;
-                        session.step = 'kyc-complete';
+                        session.step = 'kyc-agreements';
                         await _saveSessionToDb(from, session);
 
                         const success = await _processKycDocuments(from);
@@ -433,7 +434,7 @@ export class userController {
                         try {
                             const filePath = await _downloadMediaFile(mediaUrl, fileName);
                             session.data.utilityPath = filePath;
-                            session.step = 'kyc-complete';
+                            session.step = 'kyc-agreements';
                             await _saveSessionToDb(from, session);
 
                             const success = await _processKycDocuments(from);
@@ -451,7 +452,87 @@ export class userController {
                         return await twilioMessageServices.sendTextMessage(from, `❌ No file detected. Please send your address proof as an attachment or type "SKIP".`);
                     }
                 }
+                else if (session.step === 'kyc-agreements') {
+                    // Get agreements for user to accept
+                    try {
+                        const agreements = await crmApiServices.getAgreements(from);
 
+                        if (!agreements || agreements.length === 0) {
+                            session.step = 'kyc-complete';
+                            await _saveSessionToDb(from, session);
+                            return await twilioMessageServices.sendTextMessage(from, `No agreements found. Type "COMPLETE" to finish your KYC.`);
+                        } else {
+                            session.data.agreements = agreements;
+                            session.data.currentAgreementIndex = 0;
+                            session.step = 'kyc-accept-terms';
+                            await _saveSessionToDb(from, session);
+
+                            const currentAgreement = agreements[0];
+                            return await twilioMessageServices.sendTextMessage(from, `Please review the following agreement: ${currentAgreement.title}\n\nTo accept, type "I ACCEPT"`);
+                        }
+                    } catch (error) {
+                        console.error("Error fetching agreements:", error);
+                        return await twilioMessageServices.sendTextMessage(from, `❌ Error fetching agreements. Please try again by typing "RETRY" or "SKIP" to continue without agreements.`);
+                    }
+                }
+                else if (session.step === 'kyc-accept-terms') {
+                    if (msg?.toLowerCase() === 'i accept' || msg?.toLowerCase() === 'accept') {
+                        try {
+                            if (!session.data.agreements || !Array.isArray(session.data.agreements)) {
+                                throw new Error("Agreement data missing");
+                            }
+
+                            const currentAgreement = session.data.agreements[session.data.currentAgreementIndex];
+                            if (!currentAgreement || !currentAgreement._id) {
+                                throw new Error("Invalid agreement data");
+                            }
+
+                            await crmApiServices.acceptAgreement(from, currentAgreement._id);
+
+                            session.data.currentAgreementIndex++;
+
+                            if (session.data.currentAgreementIndex < session.data.agreements.length) {
+                                // Move to next agreement
+                                const nextAgreement = session.data.agreements[session.data.currentAgreementIndex];
+                                await _saveSessionToDb(from, session);
+                                return await twilioMessageServices.sendTextMessage(from, `Please review the next agreement: ${nextAgreement.title}\n\nTo accept, type "I ACCEPT"`);
+                            } else {
+                                // All agreements accepted
+                                session.step = 'kyc-complete';
+                                await _saveSessionToDb(from, session);
+                                await twilioMessageServices.sendTextMessage(from, `Thank you for accepting all agreements. Your verification is in process (Estimated time: 3 minutes)`);
+
+                                // Complete KYC submission
+                                try {
+                                    await crmApiServices.completeKyc(from);
+                                    await twilioMessageServices.sendTextMessage(from, `✅ Congratulations! Your KYC has been approved. Experience the BBCorp Whatsapp trading experience with your first deposit.`);
+                                    session.step = 'main-menu';
+                                    await _saveSessionToDb(from, session);
+                                    return await twilioMessageServices.dashboardTempMessage(from);
+                                } catch (error) {
+                                    console.error("KYC completion error:", error);
+                                    if (error.response?.status === 409) {
+                                        await twilioMessageServices.sendTextMessage(from, `❌ Your KYC has been rejected. Please contact support for assistance.`);
+                                    } else {
+                                        await twilioMessageServices.sendTextMessage(from, `❌ There was an issue with your KYC verification. Please try again later or contact support.`);
+                                    }
+                                    session.step = 'main-menu';
+                                    await _saveSessionToDb(from, session);
+                                    return await twilioMessageServices.mainListTempMessage(from);
+                                }
+                            }
+                        } catch (error) {
+                            console.error("Error accepting agreement:", error);
+                            return await twilioMessageServices.sendTextMessage(from, `❌ Error accepting agreement. Please try again by typing "I ACCEPT".`);
+                        }
+                    } else if (msg?.toLowerCase() === 'skip all') {
+                        session.step = 'kyc-complete';
+                        await _saveSessionToDb(from, session);
+                        return await twilioMessageServices.sendTextMessage(from, `You've chosen to skip the agreements. This may delay your verification.`);
+                    } else {
+                        return await twilioMessageServices.sendTextMessage(from, `Please type "I ACCEPT" to agree to our terms or "SKIP ALL" to skip.`);
+                    }
+                }
                 else if (session.step === 'kyc-complete') {
                     if (msg?.toLowerCase() === 'complete') {
                         try {
@@ -1075,46 +1156,14 @@ export class userController {
 
                 else if (session.step === 'account-create-real-product') {
                     const productPayload = buttonPayload || msg?.toLowerCase()?.trim();
-                    const products = await crmApiServices.getAvailableProducts(from);
-                    if (!products || products.length === 0) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ No products available for real account creation. Please try again later.`);
-                        session.step = 'main-menu';
-                        await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
-                    }
-                    const normalise = str => (str || '').toLowerCase().trim();
-                    const productCodes = products.reduce((acc, p) => {
-                        const n = normalise(p.name);
-                        const d = normalise(p.description);
-
-                        if (['standard', 'standard account'].includes(n) ||
-                            ['standard', 'standard account'].includes(d)) {
-                            acc.standard = p._id;
-                        }
-
-                        if (['raw', 'raw spread', 'raw-spread'].includes(n) ||
-                            ['raw', 'raw spread', 'raw-spread'].includes(d)) {
-                            acc.raw = p._id;
-                        }
-
-                        return acc;
-                    }, { standard: undefined, raw: undefined });
-
-                    const { standard: StandardCode, raw: RawSpreadCode } = productCodes;
-                    if (!StandardCode || !RawSpreadCode) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ No valid products found for real account creation. Please try again later.`);
-                        session.step = 'main-menu';
-                        await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
-                    }
 
                     const productMap = {
                         create_trading_account_section_real_product_standard_account: {
-                            crmCode: StandardCode,
+                            crmCode: '683dd1c30e98eca5c731537e',
                             label: 'Standard Account',
                         },
                         create_trading_account_section_real_product_raw_spread: {
-                            crmCode: RawSpreadCode,
+                            crmCode: '683dd1f50e98eca5c73154a4',
                             label: 'Raw-Spread Account',
                         },
                     };
@@ -1385,31 +1434,33 @@ async function _processKycDocuments(from) {
             await twilioMessageServices.sendTextMessage(from, `❌ ID document is missing. Please upload your ID document.`);
             return false;
         }
-        const agreements = await crmApiServices.getAgreements(from);
-
-        if (agreements && agreements.length === 0) {
-            await twilioMessageServices.sendTextMessage(from, `❌ You must accept at least one agreement before submitting your KYC profile.`);
-            return false;
-        }
 
         try {
-
 
             const profilePayload = {
                 birthday: new Date(session.data.dob).toISOString(),
                 city: session.data.city,
                 country: session.data.country,
                 postalCode: session.data.postalCode,
-                street: session.data.street,
-                identityPath: session.data.identityPath,
-                utilityPath: session.data.utilityPath,
-                acceptedAgreements: agreements.map(agreement => agreement._id) || [],
+                street: session.data.street
             };
 
             console.log(`Submitting KYC profile for ${from}:`, profilePayload);
             await crmApiServices.submitKycProfile(from, profilePayload);
 
-            await twilioMessageServices.sendTextMessage(from, `✅ Your documents and profile information have been uploaded successfully. please wait for our team to review your KYC profile.`);
+
+            try {
+                await crmApiServices.uploadKycDocuments(from, {
+                    identityPath: session.data.identityPath,
+                    utilityPath: session.data.utilityPath
+                });
+            } catch (error) {
+                console.error("Error uploading KYC documents:", error);
+                await twilioMessageServices.sendTextMessage(from, `❌ Document upload failed: ${error.message || 'Please try again.'}`);
+                return false;
+            }
+
+            await twilioMessageServices.sendTextMessage(from, `✅ Your documents and profile information have been uploaded successfully. Now we need to review some agreements.`);
             return true;
         } catch (error) {
             console.error("Error submitting KYC profile:", error);
@@ -1442,7 +1493,6 @@ async function _saveSessionToDb(whatsappPhone, session) {
                 data: {
                     step: session.step,
                     userFlow: session.userFlow || 'whatsapp-template',
-                    language: session.language || 'english',
                     data: JSON.stringify(session.data || {}),
                     updatedAt: new Date()
                 }
@@ -1453,7 +1503,6 @@ async function _saveSessionToDb(whatsappPhone, session) {
                     whatsappPhone,
                     step: session.step,
                     userFlow: session.userFlow || 'whatsapp-template',
-                    language: session.language || 'english',
                     data: JSON.stringify(session.data || {})
                 }
             });

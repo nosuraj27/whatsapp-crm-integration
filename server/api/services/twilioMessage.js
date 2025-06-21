@@ -1,5 +1,6 @@
 import { skip } from '@prisma/client/runtime/library';
 import userServices from './user';
+import e from 'cors';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -7,27 +8,24 @@ const twilioNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+9617870957
 const client = require('twilio')(accountSid, authToken);
 
 
+// 📊 Dashboard  
+// 💵 Deposit
+// 📄 History
+// 🔁 Transfer to Account 
+// 📈 Create Trading Acc. 
+// 💰 Withdraw
+// 👥 Refer & Earn  
+// ❓ How to Use 
+// 🛎 Support
+
 const twilioMessageServices = {
 
     async languageTempMessage(phoneNumber) {
-        try {
-            const message = await client.messages.create({
-                from: `whatsapp:${twilioNumber}`,
-                to: `whatsapp:${phoneNumber}`,
-                contentSid: 'HX9cd115fb7920268e4281ecb76b72e0ea',
-                // contentSid: 'HXc9241b04659c42f59d154d28545788dc',
-            });
-            console.log('Message sent! SID:', message.sid);
-            return message.sid;
-        } catch (e) {
-            console.error('Error sending language selection message:', e);
-            throw new Error('Failed to send language selection message');
-
-        }
+        return await commonTempMessage(phoneNumber, 'HX97a2f4cdbfbba84408e8bb5fe0f988ce');
     },
 
     async authTempate(phoneNumber) {
-        return await commonTempMessage(phoneNumber, 'HXad7316d48adb1ce3dd5ffa8b8c7e5e11');
+        return await commonTempMessage(phoneNumber, 'HXc38e4199248bc027729cf418e4cdee1b');
     },
 
     async signupConfirmationTemp(phoneNumber, data) {
@@ -68,9 +66,9 @@ const twilioMessageServices = {
             const message = await client.messages.create({
                 from: `whatsapp:${twilioNumber}`,
                 to: `whatsapp:${phoneNumber}`,
-                contentSid: 'HX102c1b867daf302179f75dc40c8f1be9',
+                contentSid: 'HX97f6ac92b227bb9da85d994b47e036ec',
                 contentVariables: JSON.stringify({
-                    "1": user.name ? `${user.name} 👋` : "friend 👋",
+                    "1": user.name ? `${user.name}` : "friend 👋",
                 })
 
             });
@@ -136,18 +134,18 @@ const twilioMessageServices = {
         return await commonTempMessage(phoneNumber, contentSid)
     },
 
-    deshboardSectionTempMessage: async (phoneNumber) => {
-        const contentSid = 'HX67dd7cb44b6ac08260e1d2f02a15aaaf';
-        return await commonTempMessage(phoneNumber, contentSid)
+    deshboardSectionTempMessage: async (phoneNumber, message) => {
+        const contentSid = 'HX5a25e660f1dc51e69a5e2b34793894aa';
+        return await commonTempMessage(phoneNumber, contentSid, { "1": message });
     },
 
     deshboardDepositTempMessage: async (phoneNumber) => {
-        const contentSid = 'HX3a23b5c1947262a0d5a25eba61a1ca2e';
+        const contentSid = 'HXfc58800ea19cd24998f733c2aa24d48b';
         return await commonTempMessage(phoneNumber, contentSid)
     },
 
     deshboardWithdrawTempMessage: async (phoneNumber, balance) => {
-        const contentSid = 'HXfdb137555f8de5dfb8c8a6556888b60f';
+        const contentSid = 'HX031b1adc333611b6b832378d4dd5f835';
         return await commonTempMessage(phoneNumber, contentSid, { "1": String(balance || 0) });
     },
 
@@ -156,6 +154,10 @@ const twilioMessageServices = {
         return await commonTempMessage(phoneNumber, contentSid, { "1": String(amount || 0), "2": String(availableBalance || 0), "3": source, "4": destination });
     },
 
+    goBackTempMessage: async (phoneNumber, errorMessage) => {
+        const contentSid = 'HX8b2c14c6e90544e2c30b0ea102b2b669';
+        return await commonTempMessage(phoneNumber, contentSid, { "1": errorMessage });
+    }
 
 
 
