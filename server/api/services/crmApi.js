@@ -291,11 +291,17 @@ const crmApiServices = {
 
     async getReferalLink(whatsappPhone) {
         try {
-            const user = await userServices.find({ whatsappPhone: whatsappPhone });
-            if (!user || !user.token) {
-                throw new Error('User not found or token not available');
+            let link = null;
+            try {
+                const token = await getToken(whatsappPhone);
+                const res = await axios.get(
+                    `${baseUrl}/api/client/ib/generate-link`,
+                    { headers: { "x-auth-token": token, 'x-api-key': process.env.CRM_API_KEY } }
+                );
+                link = res.data.link;
+            } catch (e) {
+                link = `https://portal.bbcorp.trade/auth/jwt/sign-up/partner/m8zSO6`;
             }
-            let link = `${baseUrl}/api/client/auth/referral-link?code=${user.code}`;
             return link;
         } catch (e) {
             throw new Error('❌ Failed to fetch referral link.');

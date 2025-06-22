@@ -1036,19 +1036,20 @@ export class userController {
                             });
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            await twilioMessageServices.sendTextMessage(from,
+                            await twilioMessageServices.goBackTempMessage(from,
                                 `🎉 Woohoo! Your demo account "${name}" has been created with a balance of $${amount}! Ready to start trading?`
                             );
-                            await twilioMessageServices.createTradingAccountTempMessage(from);
+                            // await twilioMessageServices.createTradingAccountTempMessage(from);
                             return;
                         } catch (error) {
                             console.error('Demo account creation error:', error);
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            await twilioMessageServices.sendTextMessage(from,
+                            await twilioMessageServices.goBackTempMessage(from,
                                 `❌ ${error?.message ?? 'Failed to create demo account. Please try again later.'}`
                             );
-                            await twilioMessageServices.createTradingAccountTempMessage(from);
+                            // await twilioMessageServices.createTradingAccountTempMessage(from);
+                            return;
                         }
                     }
                 }
@@ -1077,10 +1078,11 @@ export class userController {
                     const productPayload = buttonPayload || msg?.toLowerCase()?.trim();
                     const products = await crmApiServices.getAvailableProducts(from);
                     if (!products || products.length === 0) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ No products available for real account creation. Please try again later.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ No products available for real account creation. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        // return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
                     const normalise = str => (str || '').toLowerCase().trim();
                     const productCodes = products.reduce((acc, p) => {
@@ -1102,10 +1104,11 @@ export class userController {
 
                     const { standard: StandardCode, raw: RawSpreadCode } = productCodes;
                     if (!StandardCode || !RawSpreadCode) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ No valid products found for real account creation. Please try again later.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ No valid products found for real account creation. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        // return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
 
                     const productMap = {
@@ -1121,7 +1124,7 @@ export class userController {
 
                     const selected = productMap[productPayload];
                     if (!selected) {
-                        await twilioMessageServices.sendTextMessage(from,
+                        await twilioMessageServices.goBackTempMessage(from,
                             `❌ Invalid choice. Please tap one of the buttons or reply with “Standard” or “Raw Spread”.`
                         );
                     } else {
@@ -1135,20 +1138,20 @@ export class userController {
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
 
-                            await twilioMessageServices.sendTextMessage(from,
+                            await twilioMessageServices.goBackTempMessage(from,
                                 `✅ Your real trading account “${name}” (${selected.label}) has been created successfully.\n` +
                                 `You’ll receive the credentials by email shortly.`
                             );
-                            await twilioMessageServices.createTradingAccountTempMessage(from);
+                            // await twilioMessageServices.createTradingAccountTempMessage(from);
                             return;
                         } catch (error) {
                             console.error('Real account creation error:', error);
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            await twilioMessageServices.sendTextMessage(from,
+                            await twilioMessageServices.goBackTempMessage(from,
                                 `❌ ${error?.message ?? 'Failed to create real account. Please try again later.'}`
                             );
-                            await twilioMessageServices.createTradingAccountTempMessage(from);
+                            // await twilioMessageServices.createTradingAccountTempMessage(from);
                             return;
                         }
                     }
@@ -1165,18 +1168,18 @@ export class userController {
                     try {
                         const referralLink = await crmApiServices.getReferalLink(from);
                         if (referralLink) {
-                            await twilioMessageServices.sendTextMessage(from, `🤝 Refer and Earn! Share this link with your friends to earn rewards: ${referralLink}`);
+                            await twilioMessageServices.goBackTempMessage(from, `🤝 Refer and Earn! Share this link with your friends to earn rewards: ${referralLink}`);
                         } else {
-                            await twilioMessageServices.sendTextMessage(from, `❌ Unable to generate referral link at the moment. Please try again later.`);
+                            await twilioMessageServices.goBackTempMessage(from, `❌ Unable to generate referral link at the moment. Please try again later.`);
                         }
 
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        await twilioMessageServices.mainListTempMessage(from);
+                        // await twilioMessageServices.mainListTempMessage(from);
                         return;
                     } catch (error) {
                         console.error("Error fetching referral link:", error);
-                        await twilioMessageServices.sendTextMessage(from, `❌ Error fetching your referral link. Please try again later.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Error fetching your referral link. Please try again later.`);
                     }
                     return;
                 }
@@ -1189,21 +1192,21 @@ export class userController {
                             const historyMessage = history?.transactions?.map((item, index) => {
                                 return `${index + 1}. ${item.type} - ${item.status} - ${item.amount} ${item.currencyName} on ${new Date(item.createdAt).toLocaleDateString()} ${new Date(item.createdAt).toLocaleTimeString()}`;
                             }).join('\n');
-                            await twilioMessageServices.sendTextMessage(from, `📜 Your Transaction History:\n\n${historyMessage}`);
+                            await twilioMessageServices.goBackTempMessage(from, `📜 Your Transaction History:\n\n${historyMessage}`);
 
                         } else {
-                            await twilioMessageServices.sendTextMessage(from, `📜 No transaction history found.`);
+                            await twilioMessageServices.goBackTempMessage(from, `📜 No transaction history found.`);
                         }
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        await twilioMessageServices.mainListTempMessage(from);
+                        // await twilioMessageServices.mainListTempMessage(from);
                         return;
                     } catch (error) {
                         console.error("Error fetching history:", error);
-                        await twilioMessageServices.sendTextMessage(from, `❌ Error fetching your transaction history. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        await twilioMessageServices.mainListTempMessage(from);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Error fetching your transaction history. Please try again later.`);
+                        // await twilioMessageServices.mainListTempMessage(from);
                         return;
                     }
                 }
@@ -1234,10 +1237,11 @@ export class userController {
                         `- *Phone*: +1234567890\n` +
                         `- *WhatsApp*: +1234567890\n\n` +
                         `Our support team is available 24/7 to assist you with any issues or questions you may have.`;
-                    await twilioMessageServices.sendTextMessage(from, supportMessage);
+
                     session.step = 'main-menu';
                     await _saveSessionToDb(from, session);
-                    await twilioMessageServices.mainListTempMessage(from);
+                    await twilioMessageServices.goBackTempMessage(from, supportMessage);
+                    // await twilioMessageServices.mainListTempMessage(from);
                     return;
                 }
 
@@ -1269,17 +1273,17 @@ export class userController {
                             accountsMessage += "📂 No demo accounts found.";
                         }
 
-                        await twilioMessageServices.sendTextMessage(from, accountsMessage);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        await twilioMessageServices.mainListTempMessage(from);
+                        await twilioMessageServices.goBackTempMessage(from, accountsMessage);
+                        // await twilioMessageServices.mainListTempMessage(from);
                         return;
                     } catch (error) {
                         console.error("Error fetching accounts:", error);
-                        await twilioMessageServices.sendTextMessage(from, `❌ Error fetching your accounts. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        await twilioMessageServices.mainListTempMessage(from);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Error fetching your accounts. Please try again later.`);
+                        // await twilioMessageServices.mainListTempMessage(from);
                         return
 
 
