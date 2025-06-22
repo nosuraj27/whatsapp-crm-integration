@@ -635,7 +635,7 @@ export class userController {
                         // Add wallets to the list
                         if (wallets && wallets.length > 0) {
                             wallets.forEach((wallet, index) => {
-                                sourceAccountListMessage += `${index + 1}. Wallet - $${wallet.balance || 0}\n`;
+                                sourceAccountListMessage += `${index + 1}. Wallet - $${wallet.balance || 0}\n\n`;
                             });
                         }
 
