@@ -62,10 +62,10 @@ export class userController {
                     }
                     if (['language_urdu', 'language_urdu',].includes(buttonPayload || msg?.toLowerCase())) {
 
-                        await twilioMessageServices.sendTextMessage(from, `❌ Sorry, only English is supported at the moment. Please select English to continue.`);
-                        session.step = 'language-selection';
+                        session.step = 'main-menu';
+                        session.language = 'arabic';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.languageTempMessage(from);
+                        return await twilioMessageServices.authTempate(from);
                     }
                     if (['language_ai'].includes(buttonPayload || msg?.toLowerCase())) {
 
@@ -1440,25 +1440,25 @@ async function _saveSessionToDb(whatsappPhone, session) {
             where: { whatsappPhone }
         });
 
+        let updatedData = {
+            step: session.step,
+            userFlow: session.userFlow || 'whatsapp-template',
+            data: JSON.stringify(session.data || {}),
+        }
+        if (session.language) {
+            updatedData.language = session.language;
+        }
+
         if (existingSession) {
             await prisma.userSession.update({
                 where: { id: existingSession.id },
-                data: {
-                    step: session.step,
-                    userFlow: session.userFlow || 'whatsapp-template',
-                    language: session.language || 'english',
-                    data: JSON.stringify(session.data || {}),
-                    updatedAt: new Date()
-                }
+                data: updatedData
             });
         } else {
             await prisma.userSession.create({
                 data: {
                     whatsappPhone,
-                    step: session.step,
-                    userFlow: session.userFlow || 'whatsapp-template',
-                    language: session.language || 'english',
-                    data: JSON.stringify(session.data || {})
+                    ...updatedData
                 }
             });
         }

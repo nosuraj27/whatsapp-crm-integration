@@ -30,6 +30,7 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "fs": "^0.0.1-security",
+    "google-translate-api-x": "^10.7.2",
     "helmet": "^8.0.0",
     "helmet-csp": "^4.0.0",
     "hpp": "^0.2.3",
