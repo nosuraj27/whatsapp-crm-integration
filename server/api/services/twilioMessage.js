@@ -21,7 +21,7 @@ const client = require('twilio')(accountSid, authToken);
 const twilioMessageServices = {
 
     async languageTempMessage(phoneNumber) {
-        return await commonTempMessage(phoneNumber, 'HX97a2f4cdbfbba84408e8bb5fe0f988ce');
+        return await commonTempMessage(phoneNumber, 'HX1367f4acbcf93c2ad3fb8601995ab554');
     },
 
     async authTempate(phoneNumber) {
@@ -125,7 +125,7 @@ const twilioMessageServices = {
         return await commonTempMessage(phoneNumber, contentSid)
     },
     createTradingAccountRealProductTempMessage: async (phoneNumber) => {
-        let contentSid = 'HXb5814ea9bb70ef0fd410ef50cdc59e47';
+        let contentSid = 'HX179a563f47584e91aeca3d53cdbc97d2';
         return await commonTempMessage(phoneNumber, contentSid)
     },
 

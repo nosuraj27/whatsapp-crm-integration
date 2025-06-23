@@ -54,6 +54,11 @@ const crmApiServices = {
             return res.data.msg || '✅ Signup successful! Check email.';
         } catch (e) {
             console.error('Error during signup:', e?.response?.data);
+            if (e?.response?.data?.msg) {
+                if (e?.response?.data?.msg.includes('already exists')) {
+                    throw new Error('❌ Signup failed: Email already exists');
+                }
+            }
             throw new Error('❌ Signup failed: ' + (e?.response?.data?.msg || e.message));
         }
     },
