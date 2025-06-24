@@ -514,10 +514,10 @@ export class userController {
                         return;
                     } catch (error) {
                         console.error("Error fetching accounts:", error);
-                        await twilioMessageServices.sendTextMessage(from, `😕 We had trouble accessing your accounts. Let's try again in a moment or contact our support team if this continues.`);
+                        await twilioMessageServices.goBackTempMessage(from, `😕 We had trouble accessing your accounts. Let's try again in a moment or contact our support team if this continues.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
                 }
 
@@ -531,10 +531,10 @@ export class userController {
                 else if (session.step === 'dashboard-deposit-options') {
                     const wallets = await crmApiServices.getWallet(from);
                     if (!wallets || wallets.length === 0) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ You don't have any wallets available for deposit. Please create a wallet first.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ You don't have any wallets available for deposit. Please create a wallet first.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
 
                     // Store wallet ID for later use
@@ -543,17 +543,17 @@ export class userController {
 
                     const paymentGateways = await crmApiServices.getPaymentGateway(from);
                     if (!paymentGateways || paymentGateways.length === 0) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ No payment gateways are available at the moment. Please try again later.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ No payment gateways are available at the moment. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
 
                     if (['dashboard_section_option_deposit_match2pay'].includes(buttonPayload || msg?.toLowerCase())) {
                         const match2pay = paymentGateways.find(gateway => gateway.uniqueName === 'match2pay');
                         if (!match2pay) {
-                            await twilioMessageServices.sendTextMessage(from, `❌ Match2Pay payment option is not available at the moment.`);
-                            return await twilioMessageServices.deshboardDepositTempMessage(from);
+                            await twilioMessageServices.goBackTempMessage(from, `❌ Match2Pay payment option is not available at the moment.`);
+                            return;
                         }
 
                         session.data.selectedPaymentGateway = match2pay._id;
@@ -566,10 +566,10 @@ export class userController {
                     else if (['dashboard_section_option_deposit_whishMoney'].includes(buttonPayload || msg?.toLowerCase())) {
                         const whishMoney = paymentGateways.find(gateway => gateway.uniqueName === 'whishMoney');
                         if (!whishMoney) {
-                            await twilioMessageServices.sendTextMessage(from, `❌ Whish Money payment option is not available at the moment.`);
+                            await twilioMessageServices.goBackTempMessage(from, `❌ Whish Money payment option is not available at the moment.`);
                             session.step = 'dashboard-deposit-options';
                             await _saveSessionToDb(from, session);
-                            return await twilioMessageServices.deshboardDepositTempMessage(from);
+                            return;
                         }
 
                         session.data.selectedPaymentGateway = whishMoney._id;
@@ -585,17 +585,17 @@ export class userController {
                         return await twilioMessageServices.mainListTempMessage(from);
                     }
                     else {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Invalid deposit option. Please select a valid payment method.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Invalid deposit option. Please select a valid payment method.`);
                         session.step = 'dashboard-deposit-options';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.deshboardDepositTempMessage(from);
+                        return;
                     }
                 }
 
                 else if (session.step === 'dashboard-deposit-amount') {
                     const amount = parseFloat(msg.replace(/[^\d.]/g, ''));
                     if (isNaN(amount) || amount < 10) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Please enter a valid amount (minimum $10).`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Please enter a valid amount (minimum $10).`);
                         return;
                     }
 
@@ -621,7 +621,7 @@ export class userController {
                             await twilioMessageServices.goBackTempMessage(from, `❌ You don't have any wallets or trading accounts available.`);
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            return await twilioMessageServices.mainListTempMessage(from);
+                            return;
                         }
 
                         // Store the accounts and wallets in session for reference
@@ -656,7 +656,7 @@ export class userController {
                         await twilioMessageServices.goBackTempMessage(from, `❌ There was an error fetching your accounts. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.deshboardDepositTempMessage(from);
+                        return;
                     }
                 }
 
@@ -701,7 +701,7 @@ export class userController {
                                 await twilioMessageServices.goBackTempMessage(from, `❌ You don't have any trading accounts available for transfer.`);
                                 session.step = 'main-menu';
                                 await _saveSessionToDb(from, session);
-                                return await twilioMessageServices.mainListTempMessage(from);
+                                return;
                             }
 
                             // Build numbered list of trading accounts
@@ -718,7 +718,7 @@ export class userController {
                                 await twilioMessageServices.goBackTempMessage(from, `❌ You don't have any wallets available for transfer.`);
                                 session.step = 'main-menu';
                                 await _saveSessionToDb(from, session);
-                                return await twilioMessageServices.mainListTempMessage(from);
+                                return;
                             }
 
                             // Build numbered list of wallets
@@ -737,7 +737,7 @@ export class userController {
                         await twilioMessageServices.goBackTempMessage(from, `❌ There was an error fetching destination accounts. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
                 }
 
@@ -853,14 +853,14 @@ export class userController {
 
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            return await twilioMessageServices.mainListTempMessage(from);
+                            return;
                         }
                     }
                     else {
                         await twilioMessageServices.goBackTempMessage(from, `❌ Invalid selection. Please reply with 1 to confirm or 2 to cancel.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
                 }
 
@@ -886,10 +886,10 @@ export class userController {
                 else if (session.step === 'dashboard-withdraw-options') {
                     const wallets = await crmApiServices.getWallet(from);
                     if (!wallets || wallets.length === 0) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ You don't have any wallets available for withdrawal. Please create a wallet first.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ You don't have any wallets available for withdrawal. Please create a wallet first.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
 
                     // Make sure wallet ID is stored
@@ -898,19 +898,19 @@ export class userController {
 
                     const paymentGateways = await crmApiServices.getPaymentGateway(from);
                     if (!paymentGateways || paymentGateways.length === 0) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ No payment gateways are available at the moment. Please try again later.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ No payment gateways are available at the moment. Please try again later.`);
                         session.step = 'main-menu';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
+                        return;
                     }
 
                     if (['dashboard_section_option_withdraw_match2pay'].includes(buttonPayload || msg?.toLowerCase())) {
                         const match2pay = paymentGateways.find(gateway => gateway.uniqueName === 'match2pay');
                         if (!match2pay) {
-                            await twilioMessageServices.sendTextMessage(from, `❌ Match2Pay withdrawal option is not available at the moment.`);
+                            await twilioMessageServices.goBackTempMessage(from, `❌ Match2Pay withdrawal option is not available at the moment.`);
                             session.step = 'dashboard-withdraw-options'; // Ensure step is reset
                             await _saveSessionToDb(from, session);
-                            return await twilioMessageServices.deshboardWithdrawTempMessage(from, wallets[0].balance);
+                            return;
                         }
 
                         session.data.selectedPaymentGateway = match2pay._id;
@@ -926,7 +926,7 @@ export class userController {
                             await twilioMessageServices.sendTextMessage(from, `❌ Whish Money withdrawal option is not available at the moment.`);
                             session.step = 'dashboard-withdraw-options'; // Ensure step is reset
                             await _saveSessionToDb(from, session);
-                            return await twilioMessageServices.deshboardWithdrawTempMessage(from, wallets[0].balance);
+                            return;
                         }
 
                         session.data.selectedPaymentGateway = whishMoney._id;
@@ -942,14 +942,14 @@ export class userController {
                         return await twilioMessageServices.mainListTempMessage(from);
                     }
                     else {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Invalid withdrawal option. Please select a valid payment method.`);
-                        return await twilioMessageServices.deshboardWithdrawTempMessage(from, wallets[0].balance);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Invalid withdrawal option. Please select a valid payment method.`);
+                        return;
                     }
                 }
                 else if (session.step === 'dashboard-withdraw-amount') {
                     const amount = parseFloat(msg.replace(/[^\d.]/g, ''));
                     if (isNaN(amount) || amount < 10) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Please enter a valid amount (minimum $10).`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Please enter a valid amount (minimum $10).`);
                         return;
                     }
 
@@ -959,7 +959,7 @@ export class userController {
                     if (session.data.selectedPaymentGatewayName === 'match2pay') {
                         session.step = 'dashboard-withdraw-match2pay-address';
                         await _saveSessionToDb(from, session);
-                        await twilioMessageServices.sendTextMessage(from, `Please enter your destination address for Match2Pay withdrawal:`);
+                        await twilioMessageServices.goBackTempMessage(from, `Please enter your destination address for Match2Pay withdrawal:`);
                         return;
                     }
                     else if (session.data.selectedPaymentGatewayName === 'whishMoney') {
@@ -973,7 +973,7 @@ export class userController {
                 // Match2Pay specific flow
                 else if (session.step === 'dashboard-withdraw-match2pay-address') {
                     if (!msg || msg.trim().length < 5) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Please enter a valid destination address.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Please enter a valid destination address.`);
                         return;
                     }
 
@@ -984,7 +984,7 @@ export class userController {
                 // WishMoney specific flow
                 else if (session.step === 'dashboard-withdraw-wishmoney-phone') {
                     if (!msg || msg.trim().length < 4) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Please enter a valid phone number.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Please enter a valid phone number.`);
                         return;
                     }
 
@@ -1011,7 +1011,7 @@ export class userController {
 
                 else if (session.step === 'account-create-demo-name') {
                     if (!msg || msg.trim().length < 2) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Name too short. Please enter at least 2 characters.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Name too short. Please enter at least 2 characters.`);
                     } else {
                         session.data.account_demo_name = msg.trim();
                         session.step = 'account-create-demo-balance';
@@ -1026,7 +1026,7 @@ export class userController {
                 else if (session.step === 'account-create-demo-balance') {
                     const amount = parseFloat(msg);
                     if (Number.isNaN(amount) || amount <= 0) {
-                        await twilioMessageServices.sendTextMessage(from, `🤔 We need a positive number for your balance. Let's try again!`);
+                        await twilioMessageServices.goBackTempMessage(from, `🤔 We need a positive number for your balance. Let's try again!`);
                     } else {
                         const { account_demo_name: name } = session.data;
                         try {
@@ -1064,7 +1064,7 @@ export class userController {
                 else if (session.step === 'account-create-real-name') {
                     const name = msg?.trim();
                     if (!name || name.length < 2) {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Name too short. Please enter at least 2 characters.`);
+                        await twilioMessageServices.goBackTempMessage(from, `❌ Name too short. Please enter at least 2 characters.`);
                     } else {
                         session.data.account_real_name = name;
                         session.step = 'account-create-real-product';
@@ -1303,10 +1303,10 @@ export class userController {
                         }
                     }
 
-                    await twilioMessageServices.sendTextMessage(from, `❓ Sorry, I didn't understand that or your session may have expired. Please restart.`);
+                    await twilioMessageServices.goBackTempMessage(from, `❓ Sorry, I didn't understand that or your session may have expired. Please restart.`);
                     session.step = 'language-selection';
                     await _saveSessionToDb(from, session);
-                    return await twilioMessageServices.languageTempMessage(from);
+                    return;
                 }
 
             } catch (error) {
@@ -1381,18 +1381,18 @@ async function _processKycDocuments(from) {
         const session = await _getSessionFromDb(from);
 
         if (!session || !session.data) {
-            await twilioMessageServices.sendTextMessage(from, `❌ Session data is missing. Please restart the KYC process by typing "hi".`);
+            await twilioMessageServices.goBackTempMessage(from, `❌ Session data is missing. Please restart the KYC process by typing "hi".`);
             return false;
         }
 
         if (!session.data.identityPath) {
-            await twilioMessageServices.sendTextMessage(from, `❌ ID document is missing. Please upload your ID document.`);
+            await twilioMessageServices.goBackTempMessage(from, `❌ ID document is missing. Please upload your ID document.`);
             return false;
         }
         const agreements = await crmApiServices.getAgreements(from);
 
         if (agreements && agreements.length === 0) {
-            await twilioMessageServices.sendTextMessage(from, `❌ You must accept at least one agreement before submitting your KYC profile.`);
+            await twilioMessageServices.goBackTempMessage(from, `❌ You must accept at least one agreement before submitting your KYC profile.`);
             return false;
         }
 
@@ -1417,12 +1417,12 @@ async function _processKycDocuments(from) {
             return true;
         } catch (error) {
             console.error("Error submitting KYC profile:", error);
-            await twilioMessageServices.sendTextMessage(from, `❌ Profile submission failed: ${error.message || 'Please check your information and try again.'}`);
+            await twilioMessageServices.goBackTempMessage(from, `❌ Profile submission failed: ${error.message || 'Please check your information and try again.'}`);
             return false;
         }
     } catch (error) {
         console.error("Error processing KYC documents:", error);
-        await twilioMessageServices.sendTextMessage(from, `❌ KYC submission failed. Please try again later.`);
+        await twilioMessageServices.goBackTempMessage(from, `❌ KYC submission failed. Please try again later.`);
         return false;
     }
 }
@@ -1619,7 +1619,7 @@ async function processWithdrawalTransaction(from, session) {
 
     } catch (error) {
         console.error('Error processing withdrawal:', error);
-        await twilioMessageServices.sendTextMessage(
+        await twilioMessageServices.goBackTempMessage(
             from,
             `❌ ${error.message || 'There was an error processing your withdrawal request. Please try again later.'}`
         );
