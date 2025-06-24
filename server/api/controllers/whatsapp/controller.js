@@ -1089,13 +1089,13 @@ export class userController {
                         const n = normalise(p.name);
                         const d = normalise(p.description);
 
-                        if (['standard', 'standard account'].includes(n) ||
-                            ['standard', 'standard account'].includes(d)) {
+                        if (['standard', 'standard account', 'Standard Account'].includes(n) ||
+                            ['standard', 'standard account', 'Standard Account'].includes(d)) {
                             acc.standard = p._id;
                         }
 
-                        if (['raw', 'raw spread', 'raw-spread'].includes(n) ||
-                            ['raw', 'raw spread', 'raw-spread'].includes(d)) {
+                        if (['raw', 'raw spread', 'raw-spread', 'Raw Spread'].includes(n) ||
+                            ['raw', 'raw spread', 'raw-spread', 'Raw Spread'].includes(d)) {
                             acc.raw = p._id;
                         }
 
