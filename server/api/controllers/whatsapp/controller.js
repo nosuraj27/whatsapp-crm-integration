@@ -1508,13 +1508,19 @@ async function processDepositTransaction(from, session) {
 
         if (session.data.selectedPaymentGatewayName === 'match2pay') {
             return await twilioMessageServices.goBackTempMessage(from,
-                `🎉 Great news! Your deposit request of $${session.data.depositAmount} has been created successfully.\n\n` +
-                `📱 *Ready to complete your payment?* Just tap this link:\n${response.url}\n\n` +
-                `⏱️ This link will be active for 15 minutes - quick and easy!`
+                `🎉 Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\n` +
+                `📱 *Ready to complete your payment?* Just using this link:\n${response.url}\n\n` +
+                `⏱️ This link will be active for 10 minutes - quick and easy!`
             );
+            // return await twilioMessageServices.goBackTempMessage(from, `Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\nPlease complete your payment using this link:\n${response.url} `);
         }
         else if (session.data.selectedPaymentGatewayName === 'whishMoney') {
-            return await twilioMessageServices.goBackTempMessage(from, `Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\nPlease complete your payment using this link:\n${response.url}`);
+            return await twilioMessageServices.goBackTempMessage(from,
+                `🎉 Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\n` +
+                `📱 *Ready to complete your payment?* Just using this link:\n${response.url}\n\n` +
+                `⏱️ This link will be active for 10 minutes - quick and easy!`
+            );
+            // return await twilioMessageServices.goBackTempMessage(from, `Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\nPlease complete your payment using this link:\n${response.url}`);
         }
         else if (session.data.selectedPaymentGatewayName === 'bankTransfer') {
             // Send bank transfer instructions
