@@ -23,23 +23,27 @@ const client = require('twilio')(accountSid, authToken);
 const twilioMessageServices = {
 
     async languageTempMessage(phoneNumber) {
-        return await commonTempMessage(phoneNumber, 'HX1367f4acbcf93c2ad3fb8601995ab554');
+        return await commonTempMessage(phoneNumber, 'HX7c1ee8d42b5a1aad156da1a63b28fee6');
     },
 
     async authTempate(phoneNumber) {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
-            return await commonTempMessage(phoneNumber, 'HX9093792cd9fdf8a0f3bb77114bb01429');
+            return await commonTempMessage(phoneNumber, 'HX3964a30d6b9ad9153ef38871a480fa7c');
         }
-        return await commonTempMessage(phoneNumber, 'HXc38e4199248bc027729cf418e4cdee1b');
+        return await commonTempMessage(phoneNumber, 'HXc98a76188e43ccafd4cfa11a69caf169');
     },
 
     async signupConfirmationTemp(phoneNumber, data) {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
-            return await commonTempMessage(phoneNumber, 'HX14d70e4802a3f85ffb116100c1e938a0', { "1": data.firstName, "2": data.lastName, "3": data.email, "4": data.phone, "5": data.password });
+            data.firstName = await smartTranslate(data.firstName);
+            data.lastName = await smartTranslate(data.lastName);
+            data.email = await smartTranslate(data.email);
+            data.phone = await smartTranslate(data.phone);
+            return await commonTempMessage(phoneNumber, 'HX242fade47a44f820dd7159a0ed30d499', { "1": data.firstName, "2": data.lastName, "3": data.email, "4": data.phone });
         }
-        return await commonTempMessage(phoneNumber, 'HX14d70e4802a3f85ffb116100c1e938a0', { "1": data.firstName, "2": data.lastName, "3": data.email, "4": data.phone, "5": data.password });
+        return await commonTempMessage(phoneNumber, 'HX095461ad82f9b756997556322d103551', { "1": data.firstName, "2": data.lastName, "3": data.email, "4": data.phone, "5": data.password });
     },
 
     async sendTextMessage(phoneNumber, body) {
@@ -67,9 +71,10 @@ const twilioMessageServices = {
 
             const language = await getUserLanguage(phoneNumber);
             if (language && language === 'arabic') {
-                return await commonTempMessage(phoneNumber, 'HX03744553d7b1073cb948c13dd3a7cac2', { "1": user.name ? `${user.name}` : "friend 👋", });
+                user.name = await smartTranslate(user.name || "friend 👋");
+                return await commonTempMessage(phoneNumber, 'HXc06ef1f41f5957479ba555c115a90f03', { "1": user.name ? `${user.name}` : "friend 👋", });
             }
-            return await commonTempMessage(phoneNumber, 'HX126311b0d08344a38a93a20c1ad293cb', { "1": user.name ? `${user.name}` : "friend 👋", });
+            return await commonTempMessage(phoneNumber, 'HX70500025eaaae729f29512a977940800', { "1": user.name ? `${user.name}` : "friend 👋", });
 
         } catch (e) {
             console.error('Error sending main menu message:', e);
@@ -85,6 +90,7 @@ const twilioMessageServices = {
             const language = await getUserLanguage(phoneNumber);
             if (language && language === 'arabic') {
                 statusMessage = await smartTranslate(statusMessage);
+                user.name = await smartTranslate(user.name || "there");
                 return await commonTempMessage(phoneNumber, 'HXd5456ea507a8d412bfeea262586ed6c0', { "1": user.name ? `${user.name}` : "there", "2": statusMessage });
             }
             return await commonTempMessage(phoneNumber, 'HX1d56f3a15ada4a9466e919b57e5d2877', { "1": user.name ? `${user.name}` : "there", "2": statusMessage });
@@ -112,16 +118,16 @@ const twilioMessageServices = {
     createTradingAccountTempMessage: async (phoneNumber) => {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
-            return await commonTempMessage(phoneNumber, 'HX35fe0050bd6694f28430099bde987233');
+            return await commonTempMessage(phoneNumber, 'HX3ffc8daeabc10207c1738e64d3929534');
         }
-        return await commonTempMessage(phoneNumber, 'HX5fb229f372cdb25bd1da1ab5762c1843')
+        return await commonTempMessage(phoneNumber, 'HXeacd83586484fb9085b9ff8954e8b08b')
     },
     createTradingAccountRealProductTempMessage: async (phoneNumber) => {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
-            return await commonTempMessage(phoneNumber, 'HXfa3944b93593822acb13ea1430f2ae65');
+            return await commonTempMessage(phoneNumber, 'HX9a0199540c4272d38d2e7200935e7b93');
         }
-        return await commonTempMessage(phoneNumber, 'HX179a563f47584e91aeca3d53cdbc97d2')
+        return await commonTempMessage(phoneNumber, 'HXea7fe34b4e8770334c6ae569e5783d4f')
     },
 
 
@@ -129,33 +135,41 @@ const twilioMessageServices = {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
             message = await smartTranslate(message);
-            return await commonTempMessage(phoneNumber, 'HX27b4013244b21c263e1a8ccb6f97da58', { "1": message });
+            return await commonTempMessage(phoneNumber, 'HX958b659402357bfc990f620522b49c46', { "1": message });
         }
-        return await commonTempMessage(phoneNumber, 'HX5a25e660f1dc51e69a5e2b34793894aa', { "1": message });
+        return await commonTempMessage(phoneNumber, 'HX3f857325a897d590b3c9ad8300b41921', { "1": message });
     },
 
     deshboardDepositTempMessage: async (phoneNumber) => {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
-            return await commonTempMessage(phoneNumber, 'HXaa779e0cfd58e312cc8f004d2f0e63be');
+            return await commonTempMessage(phoneNumber, 'HXf4088a3b75ed45519877d8231251a2d9');
         }
-        return await commonTempMessage(phoneNumber, 'HXfc58800ea19cd24998f733c2aa24d48b')
+        return await commonTempMessage(phoneNumber, 'HX9109d19edce81bd3b6dde870e054a12e')
     },
 
     deshboardWithdrawTempMessage: async (phoneNumber, balance) => {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
-            return await commonTempMessage(phoneNumber, 'HX29bfc27d8da1971b7a05442292fa6322', { "1": String(balance || 0) });
+            return await commonTempMessage(phoneNumber, 'HXc903e759cc6b2f3e5fb18182ee71d2b7', { "1": "$" + String(balance || 0) });
         }
-        return await commonTempMessage(phoneNumber, 'HX031b1adc333611b6b832378d4dd5f835', { "1": String(balance || 0) });
+        return await commonTempMessage(phoneNumber, 'HX85aaddfcd22396f902d1a6a65e45518a', { "1": "$" + String(balance || 0) });
+    },
+
+    withdrawConfirmationTempMessage: async (phoneNumber, amount, availableBalance, source) => {
+        const language = await getUserLanguage(phoneNumber);
+        if (language && language === 'arabic') {
+            return await commonTempMessage(phoneNumber, 'HXb0f1d2c3f0c7b1d2a5e3c4f5e6d78e9', { "1": "$" + String(amount || 0), "2": String(availableBalance || 0), "3": source });
+        }
+        return await commonTempMessage(phoneNumber, 'HXc1d2e3f45a6b7c8d9e0f1a2b3c4d5e6', { "1": "$" + String(amount || 0), "2": String(availableBalance || 0), "3": source });
     },
 
     transferConfirmationTempMessage: async (phoneNumber, amount, availableBalance, source, destination) => {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
-            return await commonTempMessage(phoneNumber, 'HXa6f633020c1b1d93d4cdf1842263731c', { "1": String(amount || 0), "2": String(availableBalance || 0), "3": source, "4": destination });
+            return await commonTempMessage(phoneNumber, 'HX5a4e71c66f6155e12ffaf041b57370d8', { "1": String(amount || 0), "2": String(availableBalance || 0), "3": source, "4": destination });
         }
-        return await commonTempMessage(phoneNumber, 'HX188eb2c8ee56d0cb9f46aef032546bd0', { "1": String(amount || 0), "2": String(availableBalance || 0), "3": source, "4": destination });
+        return await commonTempMessage(phoneNumber, 'HXa9d0aa693c50c7c3b5cf331196a2b8f2', { "1": String(amount || 0), "2": String(availableBalance || 0), "3": source, "4": destination });
     },
 
     goBackTempMessage: async (phoneNumber, errorMessage) => {
@@ -163,11 +177,10 @@ const twilioMessageServices = {
         const language = await getUserLanguage(phoneNumber);
         if (language && language === 'arabic') {
             errorMessage = await smartTranslate(errorMessage);
-            return await commonTempMessage(phoneNumber, 'HX02622018aac071f7c1a68caacf461fb4', { "1": errorMessage });
+            return await commonTempMessage(phoneNumber, 'HX5fcbeaeb00c82a1a9322036cf6fd057d', { "1": errorMessage });
         }
 
-        const contentSid = 'HX8b2c14c6e90544e2c30b0ea102b2b669';
-        return await commonTempMessage(phoneNumber, contentSid, { "1": errorMessage });
+        return await commonTempMessage(phoneNumber, 'HX62a35ae038f69f3832bb27b1d9712266', { "1": errorMessage });
     }
 
 
