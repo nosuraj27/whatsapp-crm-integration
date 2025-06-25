@@ -1185,10 +1185,7 @@ export class userController {
                         `5. *Trade*: Start trading with your funds.\n` +
                         `6. *Withdraw/Transfer*: Withdraw your profits or transfer funds between accounts.\n\n` +
                         `For any assistance, type "SUPPORT" to contact our support team.`;
-                    await twilioMessageServices.sendTextMessage(from, howToUseMessage);
-                    session.step = 'main-menu';
-                    await _saveSessionToDb(from, session);
-                    await twilioMessageServices.mainListTempMessage(from);
+                    await twilioMessageServices.goBackTempMessage(from, howToUseMessage);
                     return;
                 }
 
