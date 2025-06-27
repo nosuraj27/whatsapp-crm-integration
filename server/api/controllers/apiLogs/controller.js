@@ -117,7 +117,7 @@ export class apiLogsController {
         try {
 
             const validatedBody = await validationSchema.validateAsync(req.query);
-            if (validatedBody.key != process.env.API_LOG_PASS) {
+            if (validatedBody.key != process.env.API_LOGS_PASS) {
                 throw apiError.unauthorized(responseMessage.NOT_AUTHORISED)
             }
             const result = await apiLogsServices.paginateApiLogList(validatedBody)
@@ -164,7 +164,7 @@ export class apiLogsController {
         });
         try {
             const validatedBody = await validationSchema.validateAsync(req.query);
-            if (validatedBody.key != process.env.API_LOG_PASS) {
+            if (validatedBody.key != process.env.API_LOGS_PASS) {
                 throw apiError.unauthorized(responseMessage.NOT_AUTHORISED)
             }
             let result = await apiLogsServices.findApiLogs({ id: validatedBody.logId })
@@ -207,7 +207,7 @@ export class apiLogsController {
         try {
 
             const validatedBody = await validationSchema.validateAsync(req.query);
-            if (validatedBody.key != process.env.API_LOG_PASS) {
+            if (validatedBody.key != process.env.API_LOGS_PASS) {
                 throw apiError.unauthorized(responseMessage.NOT_AUTHORISED)
             }
             const csvFile = await exportSwagger.generateSwaggerJSON();
@@ -261,7 +261,7 @@ export class apiLogsController {
         try {
 
             const validatedBody = await validationSchema.validateAsync(req.query);
-            if (validatedBody.key != process.env.API_LOG_PASS) {
+            if (validatedBody.key != process.env.API_LOGS_PASS) {
                 throw apiError.unauthorized(responseMessage.NOT_AUTHORISED)
             }
 

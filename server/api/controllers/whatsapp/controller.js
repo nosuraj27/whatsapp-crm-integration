@@ -82,6 +82,30 @@ export class userController {
                     }
                 }
 
+                if (msg && (msg.toLowerCase().includes('code:') || msg.toLowerCase().includes('code :'))) {
+                    console.log(`Referral code detected in message: ${msg}`);
+                    // More flexible regex to catch various referral code formats
+                    const referralCodeMatch = msg.match(/(?:.*(?:referral code|ref|code).*?[:\s]+)([A-Za-z0-9]+)/i);
+                    if (referralCodeMatch) {
+                        console.log(`Referral code found: ${referralCodeMatch[1]}`);
+                        const referralCode = referralCodeMatch[1];
+                        session.data = session.data || {};
+                        session.data.referralCode = referralCode;
+                        await _saveSessionToDb(from, session);
+
+                        const welcomeMessage = `🎉 *Welcome to BBCorp!*\n\n` +
+                            `Thanks for joining us with referral code: \`${referralCode}\`\n\n` +
+                            `You're about to start an amazing trading journey! 🚀\n\n` +
+                            `Your referral code has been saved and will be applied when you complete registration.\n\n` +
+                            `Let's get started! Please choose your preferred language:`;
+
+                        await twilioMessageServices.sendTextMessage(from, welcomeMessage);
+                        session.step = 'language-selection';
+                        await _saveSessionToDb(from, session);
+                        return await twilioMessageServices.languageTempMessage(from);
+                    }
+                }
+
                 if (['hi', 'hii', 'hello', 'hey bbcorp', 'menu', 'manu'].includes(msg?.toLowerCase() || buttonPayload)) {
 
                     // NOTE If user sends "hi" or similar, check if they are already logged in
@@ -110,7 +134,7 @@ export class userController {
                                     } else if (checkKyc.status === 'pending') {
                                         session.step = 'kyc-complete';
                                         await _saveSessionToDb(from, session);
-                                        return await twilioMessageServices.sendTextMessage(from, `Your KYC is still pending. Please wait for approval.`);
+                                        return await twilioMessageServices.goBackTempMessage(from, `Your KYC is still pending. Please wait for approval.\n\nOr type "logout" to logout.`);
                                     } else if (checkKyc.pendingFields?.length > 0) {
                                         session.step = 'kyc-start';
                                         await _saveSessionToDb(from, session);
@@ -157,7 +181,7 @@ export class userController {
                     // Signup flow
                     session.step = 'signup-firstname';
                     await _saveSessionToDb(from, session);
-                    return await twilioMessageServices.sendTextMessage(from, `Let's start! Please share your first name only (1/6)`);
+                    return await twilioMessageServices.sendTextMessage(from, `Let's start! Please share your *first name* only (1/6)`);
                 }
 
                 else if (['menu_list_logout', 'menu_list_logout', 'logout'].includes(buttonPayload || msg?.toLowerCase())) {
@@ -165,7 +189,7 @@ export class userController {
                     session = { step: 'language-selection', data: {} };
                     await _saveSessionToDb(from, session);
                     await userServices.deleteMany({ whatsappPhone: from });
-                    await twilioMessageServices.sendTextMessage(from, `You have been logged out. Type "hi" to start again.`);
+                    await twilioMessageServices.sendTextMessage(from, `You have been logged out. Type "Hi" to start again.`);
                     await twilioMessageServices.languageTempMessage(from);
                     return;
 
@@ -174,12 +198,13 @@ export class userController {
                 // NOTE SIGNUP FLOW
                 else if (session.step === 'signup-firstname') {
                     if (!msg || msg.length < 2) {
-                        return await twilioMessageServices.sendTextMessage(from, `✏️ We need your name so we can greet you properly. Please enter at least 2 characters.`);
+                        return await twilioMessageServices.sendTextMessage(from, `❌ Please enter a valid first name (minimum 2 characters)`);
                     } else {
                         session.data.firstName = msg;
                         session.step = 'signup-lastname';
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.sendTextMessage(from, `Nice to meet you, ${msg}! 👋 Now, what's your last name? (2/6)`);
+                        // return await twilioMessageServices.sendTextMessage(from, `Nice to meet you, ${msg}! 👋\nPlease share your *last name* only (2/6)`);
+                        return await twilioMessageServices.sendTextMessage(from, `Please share your *last name* only (2/6)`);
                     }
                 }
                 else if (session.step === 'signup-lastname') {
@@ -247,27 +272,46 @@ export class userController {
                                 password: session.data.password,
                                 phoneNumber: session.data.phone,
                             };
+
+                            // Add referral code if it exists
+                            if (session.data.referralCode) {
+                                payload.referralCode = session.data.referralCode;
+                            }
+
                             await crmApiServices.signup(from, payload);
                             session.step = 'main-menu';
                             await _saveSessionToDb(from, session);
-                            return await twilioMessageServices.sendTextMessage(from,
-                                `✅ Thank you for joining BBCorp's Whatsapp Trading Portal! Please verify your account with the link sent to your email. You have 2 minutes to successfully login.`
-                            );
+
+                            let successMessage = `✅ Thank you for joining BBCorp's Whatsapp Trading Portal! Please verify your account with the link sent to your email. You have 2 minutes to successfully login.`;
+
+                            // Add referral confirmation message
+                            if (session.data.referralCode) {
+                                successMessage += `\n\n🎁 Your referral code \`${session.data.referralCode}\` has been applied to your account!`;
+                            }
+
+                            return await twilioMessageServices.goBackTempMessage(from, successMessage);
                         } catch (error) {
                             console.error('Signup error:', error);
-                            if (error.response?.status === 409) {
-                                return await twilioMessageServices.sendTextMessage(from, `❌ An account with this email already exists. Please try logging in or use a different email.`);
-                            } else {
-                                return await twilioMessageServices.sendTextMessage(from, error.message || ERROR_MESSAGES.SERVER_ERROR);
-                                // Keep the user on the same step to retry
-                            }
+                            return await twilioMessageServices.goBackTempMessage(from, error.message || ERROR_MESSAGES.SERVER_ERROR);
+
                         }
                     } else if (['restart', 'bbcorp_signup_restart'].includes(msg?.toLowerCase() || buttonPayload)) {
+                        // Preserve referral code when restarting signup
+                        const referralCode = session.data?.referralCode;
                         session = { step: 'signup-firstname', data: {} };
+                        if (referralCode) {
+                            session.data.referralCode = referralCode;
+                        }
                         await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.sendTextMessage(from, `🔄 Restarting the signup process. Let's start again!`);
+
+                        let restartMessage = `🔄 Restarting the signup process.\n\nLet's start again. Please share your *first name* only (1/6).\n\nOr type *Hi* to go back.`;
+                        if (referralCode) {
+                            restartMessage += `\n\n🎁 Your referral code \`${referralCode}\` is still saved!`;
+                        }
+
+                        return await twilioMessageServices.sendTextMessage(from, restartMessage);
                     } else {
-                        return await twilioMessageServices.sendTextMessage(from, `❌ Invalid option. Please select CONFIRM to proceed or RESTART to start over.`);
+                        return await twilioMessageServices.goBackTempMessage(from, `❌ Invalid option. Please select CONFIRM to proceed or RESTART to start over.`);
                     }
                 }
 
@@ -305,7 +349,7 @@ export class userController {
                                     } else if (checkKyc.status === 'pending') {
                                         session.step = 'kyc-complete';
                                         await _saveSessionToDb(from, session);
-                                        return await twilioMessageServices.sendTextMessage(from, `Your KYC is still pending. Please wait for approval. or type "logout" to logout.`);
+                                        return await twilioMessageServices.goBackTempMessage(from, `Your KYC is still pending. Please wait for approval.\n\nOr type "logout" to logout.`);
                                     } else if (checkKyc.pendingFields?.length > 0) {
                                         session.step = 'kyc-start';
                                         await _saveSessionToDb(from, session);
@@ -324,19 +368,11 @@ export class userController {
                                     return await twilioMessageServices.mainListTempMessage(from);
                                 }
                             } else {
-                                await twilioMessageServices.sendTextMessage(from, `❌ Invalid credentials or account not verified. Please check your email and password and try again.`);
-                                session.step = 'login-email';
-                                await _saveSessionToDb(from, session);
-                                return await twilioMessageServices.authTempate(from);
+                                return await twilioMessageServices.goBackTempMessage(from, `❌ Invalid credentials.`);
 
                             }
                         } catch (error) {
-                            console.error('Login error:', error);
-                            if (error.response?.status === 401) {
-                                return await twilioMessageServices.sendTextMessage(from, `❌ Invalid email or password. Please try again.`);
-                            } else {
-                                return await twilioMessageServices.sendTextMessage(from, ERROR_MESSAGES.API_ERROR);
-                            }
+                            return await twilioMessageServices.goBackTempMessage(from, ERROR_MESSAGES.API_ERROR);
                         }
                     }
                 }
@@ -445,10 +481,10 @@ export class userController {
                             }
                         } catch (error) {
                             console.error("Error downloading utility document:", error);
-                            return await twilioMessageServices.sendTextMessage(from, `❌ Error processing your document. Please try again or send a different image.`);
+                            return await twilioMessageServices.goBackTempMessage(from, `❌ Error processing your document. Please try again or send a different image.`);
                         }
                     } else {
-                        return await twilioMessageServices.sendTextMessage(from, `❌ No file detected. Please send your address proof as an attachment or type "SKIP".`);
+                        return await twilioMessageServices.goBackTempMessage(from, `❌ No file detected. Please send your address proof as an attachment or type "SKIP".`);
                     }
                 }
 
@@ -480,37 +516,62 @@ export class userController {
                         const user = await userServices.find({ whatsappPhone: from });
                         const userName = user?.firstName || "there";
 
-                        let accountsMessage = `🏦 Account Summary*\n\n`;
+                        // let accountsMessage = `🏦 Account Summary*\n\n`;
 
-                        if (wallet.length > 0) {
-                            accountsMessage += "💰 *Wallet:*";
-                            accountsMessage += wallet.map((acc, i) =>
-                                ` $${acc.balance || 0}`).join('\n') + "\n\n";
-                        } else {
-                            accountsMessage += "📂 No wallet found yet. Let's set one up!\n\n";
-                        }
+                        // if (wallet.length > 0) {
+                        //     accountsMessage += "💰 *Wallet:*";
+                        //     accountsMessage += wallet.map((acc, i) =>
+                        //         ` $${acc.balance || 0}`).join('\n') + "\n\n";
+                        // } else {
+                        //     accountsMessage += "📂 No wallet found yet. Let's set one up!\n\n";
+                        // }
 
-                        accountsMessage += "📊 *Real Account(s):*\n";
-                        if (realAccounts.length > 0) {
-                            accountsMessage += realAccounts.map((acc, i) =>
-                                `${i + 1}. ${acc.name || 'N/A'}: $${acc.balance || 0}`).join('\n') + "\n\n";
+                        // accountsMessage += "📊 *Real Account(s):*\n";
+                        // if (realAccounts.length > 0) {
+                        //     accountsMessage += realAccounts.map((acc, i) =>
+                        //         `${i + 1}. ${acc.name || 'N/A'}: $${acc.balance || 0}`).join('\n') + "\n\n";
 
-                            accountsMessage += `Total Real Balance: $${realAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)}\n\n`;
-                        } else {
-                            accountsMessage += "📂 No real accounts found.\n\n";
-                        }
+                        //     accountsMessage += `Total Real Balance: $${realAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)}\n\n`;
+                        // } else {
+                        //     accountsMessage += "📂 No real accounts found.\n\n";
+                        // }
 
-                        accountsMessage += "🧪 *Demo Account(s):*\n";
-                        if (demoAccounts.length > 0) {
-                            accountsMessage += demoAccounts.map((acc, i) =>
-                                `${i + 1}. ${acc.name || 'N/A'}: $${acc.balance || 0}`).join('\n') + "\n\n";
-                            accountsMessage += `Total Demo Balance: $${demoAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)}`;
-                        } else {
-                            accountsMessage += "📂 No demo accounts found.";
-                        }
+                        // accountsMessage += "🧪 *Demo Account(s):*\n";
+                        // if (demoAccounts.length > 0) {
+                        //     accountsMessage += demoAccounts.map((acc, i) =>
+                        //         `${i + 1}. ${acc.name || 'N/A'}: $${acc.balance || 0}`).join('\n') + "\n\n";
+                        //     accountsMessage += `Total Demo Balance: $${demoAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)}`;
+                        // } else {
+                        //     accountsMessage += "📂 No demo accounts found.";
+                        // }
 
                         // await twilioMessageServices.sendTextMessage(from, accountsMessage);
-                        await twilioMessageServices.deshboardSectionTempMessage(from, accountsMessage);
+                        const imageData = {
+                            accountHolderName: userName,
+                            balance: wallet[0]?.balance || 0,
+                            currency: 'USD',
+                            realAccounts: realAccounts.map((acc, i) => ({
+                                sn: i + 1,
+                                name: acc.name || 'N/A',
+                                amount: `$${acc.balance || 0}`
+                            })),
+                            demoAccounts: demoAccounts.map((acc, i) => ({
+                                sn: i + 1,
+                                name: acc.name || 'N/A',
+                                // amount: `$${acc.balance || 0} ${acc?.currency?.name || "USD"}`
+                                amount: `$${acc.balance || 0}`
+                            }))
+                        };
+
+                        // send await message for dashboard image 
+                        const userWaitMessage = `⏳ Please wait while we fetch your account details...`;
+                        await twilioMessageServices.sendTextMessage(from, userWaitMessage);
+                        await twilioMessageServices.sendMediaFile(from, imageData, '');
+
+                        // Add a small delay to ensure media is processed before sending the dashboard message
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+
+                        await twilioMessageServices.deshboardSectionTempMessage(from, 'Welcome to your dashboard, ' + userName + '!');
                         return;
                     } catch (error) {
                         console.error("Error fetching accounts:", error);
@@ -1143,7 +1204,28 @@ export class userController {
                     try {
                         const referralLink = await crmApiServices.getReferalLink(from);
                         if (referralLink) {
-                            await twilioMessageServices.goBackTempMessage(from, `🤝 Refer and Earn! Share this link with your friends to earn rewards: ${referralLink}`);
+                            // Extract referral code from the link or generate one
+                            const referralCode = referralLink.split('/').pop() || referralLink.split('=').pop() || 'REF123';
+
+                            // TODO: Replace with your actual WhatsApp Business number
+                            const whatsappBusinessNumber = process.env.TWILIO_WHATSAPP_NUMBER || '+1234567890';
+
+                            // Create WhatsApp join link with referral code
+                            const whatsappJoinLink = `https://wa.me/${whatsappBusinessNumber}?text=Hi%20BBCorp!%20I%20want%20to%20join%20with%20referral%20code:%20${referralCode}`;
+
+                            const referralMessage = `🤝 *Refer and Earn Program!*\n\n` +
+                                `Share these links with your friends to earn rewards:\n\n` +
+                                `📎 *Website Referral Link:*\n${referralLink}\n\n` +
+                                `💬 *WhatsApp Join Link:*\n${whatsappJoinLink}\n\n` +
+                                `🎁 *Your Referral Code:* \`${referralCode}\`\n\n` +
+                                `✨ *How it works:*\n` +
+                                `• Share the WhatsApp link with friends\n` +
+                                `• They click and join our WhatsApp channel\n` +
+                                `• Their referral code is automatically applied\n` +
+                                `• You both earn rewards when they start trading!\n\n` +
+                                `📱 When your friends click the WhatsApp link, they'll be directed to our WhatsApp channel and can signup instantly with your referral code!`;
+
+                            await twilioMessageServices.goBackTempMessage(from, referralMessage);
                         } else {
                             await twilioMessageServices.goBackTempMessage(from, `❌ Unable to generate referral link at the moment. Please try again later.`);
                         }
@@ -1373,7 +1455,7 @@ async function _processKycDocuments(from) {
             console.log(`Submitting KYC profile for ${from}:`, profilePayload);
             await crmApiServices.submitKycProfile(from, profilePayload);
 
-            await twilioMessageServices.sendTextMessage(from, `✅ Your documents and profile information have been uploaded successfully. please wait for our team to review your KYC profile.`);
+            await twilioMessageServices.goBackTempMessage(from, `✅ Your documents and profile information have been uploaded successfully. please wait for our team to review your KYC profile.`);
             return true;
         } catch (error) {
             console.error("Error submitting KYC profile:", error);

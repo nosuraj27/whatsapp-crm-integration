@@ -22,8 +22,8 @@ export const handleSocketConnections = async (server) => {
                 return next(new Error('Authentication error: Token missing'));
             }
 
-            if (token === process.env.API_LOG_PASS) {
-                return next(); // Allow the connection if API_LOG_PASS matches
+            if (token === process.env.API_LOGS_PASS) {
+                return next(); // Allow the connection if API_LOGS_PASS matches
             }
 
             if (token.startsWith("Bearer ") || token.startsWith("Basic ")) {

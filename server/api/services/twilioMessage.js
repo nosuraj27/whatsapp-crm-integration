@@ -1,6 +1,7 @@
 import userServices from './user';
 import { smartTranslate } from './language';
 import { PrismaClient } from '@prisma/client';
+import { convertHtmlToImage } from '../../helper/htmlToImage';
 const prisma = new PrismaClient();
 
 
@@ -181,8 +182,48 @@ const twilioMessageServices = {
         }
 
         return await commonTempMessage(phoneNumber, 'HX62a35ae038f69f3832bb27b1d9712266', { "1": errorMessage });
-    }
+    },
 
+    sendMediaFile: async (phoneNumber, imageData, caption = '') => {
+        try {
+
+            const language = await getUserLanguage(phoneNumber);
+            if (language && language === 'arabic') {
+                caption = await smartTranslate(caption);
+            }
+
+
+            const defaultData = {
+                accountHolderName: 'Khaled',
+                balance: '130.50',
+                currency: 'USD',
+                realAccounts: [
+                    { sn: 1, name: 'Housen', amount: '123.45 USD' },
+                    { sn: 2, name: 'Sami', amount: '123.45 USD' },
+                    { sn: 3, name: 'Khaled', amount: '123.45 USD' },
+                    { sn: 4, name: 'Faizan', amount: '123.45 USD' }
+                ],
+                demoAccounts: [
+                    { sn: 1, name: 'Housen', amount: '123.45 USD' },
+                    { sn: 2, name: 'Sami', amount: '123.45 USD' },
+                    { sn: 3, name: 'Khaled', amount: '123.45 USD' },
+                    { sn: 4, name: 'Faizan', amount: '123.45 USD' }
+                ]
+            };
+            const imageUrl = await convertHtmlToImage(imageData || defaultData);
+            const message = await client.messages.create({
+                from: `whatsapp:${twilioNumber}`,
+                to: `whatsapp:${phoneNumber}`,
+                mediaUrl: imageUrl,
+                body: caption
+            });
+            console.log('Media message sent! SID:', message.sid);
+            return message.sid;
+        } catch (e) {
+            console.error('Error sending media message:', e);
+            throw new Error('Failed to send media message');
+        }
+    }
 
 
 

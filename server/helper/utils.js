@@ -11,11 +11,6 @@ dotenv.config();
 
 import cloudinary from "cloudinary";
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 import userServices from '../api/services/user';
 
@@ -57,11 +52,22 @@ export default {
 
         return `${startTime} - ${endTime}`;
     },
+
     getImageUrl: async (files) => {
+        cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET,
+        });
         try {
             let result;
 
-            if (files.startsWith("data:image/")) {
+            if (Buffer.isBuffer(files)) {
+                // Handle Buffer upload
+                result = await cloudinary.v2.uploader.upload(`data:image/png;base64,${files.toString('base64')}`, {
+                    resource_type: "image",
+                });
+            } else if (typeof files === 'string' && files.startsWith("data:image/")) {
                 // Handle Base64 string upload
                 result = await cloudinary.v2.uploader.upload(files, {
                     resource_type: "image",

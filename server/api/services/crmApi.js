@@ -7,11 +7,11 @@ import FormData from 'form-data';
 const baseUrl = 'https://crm-api.bbcorp.trade';
 
 const crmApiServices = {
-    async signup(whatsappPhone, { name, email, password, phoneNumber }) {
+    async signup(whatsappPhone, { name, email, password, phoneNumber, referralCode }) {
         console.log('CRM API Signup:', { whatsappPhone, name, email, password, phoneNumber });
         try {
             const res = await axios.post(
-                `${baseUrl}/api/client/auth/signup/partner/undefined`,
+                `${baseUrl}/api/client/auth/signup/partner/${referralCode}`,
                 {
                     email,
                     name,
