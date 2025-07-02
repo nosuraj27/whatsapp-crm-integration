@@ -223,6 +223,36 @@ const twilioMessageServices = {
             console.error('Error sending media message:', e);
             throw new Error('Failed to send media message');
         }
+    },
+
+    sendTransactionFile: async (phoneNumber, imageData, caption = '') => {
+        try {
+
+            const language = await getUserLanguage(phoneNumber);
+            if (language && language === 'arabic') {
+                caption = await smartTranslate(caption);
+            }
+            const defaultData = {
+                accountHolderName: 'Khaled',
+                transactionHistory: [
+                    { sn: 1, date: '2023-10-01', type: 'Deposit', status: 'Completed', amount: '123.45 USD' },
+                    { sn: 2, date: '2023-10-02', type: 'Withdrawal', status: 'Pending', amount: '67.89 USD' },
+                    { sn: 3, date: '2023-10-03', type: 'Transfer', status: 'Failed', amount: '45.67 USD' }
+                ]
+            };
+            const imageUrl = await convertHtmlToImage(imageData || defaultData, 'transaction');
+            const message = await client.messages.create({
+                from: `whatsapp:${twilioNumber}`,
+                to: `whatsapp:${phoneNumber}`,
+                mediaUrl: imageUrl,
+                body: caption
+            });
+            console.log('Media message sent! SID:', message.sid);
+            return message.sid;
+        } catch (e) {
+            console.error('Error sending media message:', e);
+            throw new Error('Failed to send media message');
+        }
     }
 
 

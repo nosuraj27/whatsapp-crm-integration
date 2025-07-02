@@ -379,7 +379,7 @@ const crmApiServices = {
             const token = await getToken(whatsappPhone);
             const res = await axios.get(
                 `${baseUrl}/api/client/transactions?page=1&pageSize=10`,
-                { headers: { "x-auth-token": token } }
+                { headers: { "x-auth-token": token }, params: { page: 1, pageSize: 10 } }
             );
             return res.data;
         } catch (e) {

@@ -1242,11 +1242,43 @@ export class userController {
                     try {
                         const history = await crmApiServices.getHistory(from);
                         if (history && history?.transactions?.length > 0) {
+                            // const historyMessage = history?.transactions?.map((item, index) => {
+                            //     return `${index + 1}. ${item.type} - ${item.status} - ${item.amount} ${item.currencyName} on ${new Date(item.createdAt).toLocaleDateString()} ${new Date(item.createdAt).toLocaleTimeString()}`;
+                            // }).join('\n');
+                            // await twilioMessageServices.sendTextMessage(from, `📜 Your Transaction History:\n\n${historyMessage}`);
                             const historyMessage = history?.transactions?.map((item, index) => {
-                                return `${index + 1}. ${item.type} - ${item.status} - ${item.amount} ${item.currencyName} on ${new Date(item.createdAt).toLocaleDateString()} ${new Date(item.createdAt).toLocaleTimeString()}`;
-                            }).join('\n');
-                            await twilioMessageServices.sendTextMessage(from, `📜 Your Transaction History:\n\n${historyMessage}`);
-                            return await twilioMessageServices.goBackTempMessage(from, `Go back to the main menu.`);
+                                return {
+                                    sn: index + 1,
+                                    // date: `${new Date(item.createdAt).toLocaleDateString()} ${new Date(item.createdAt).toLocaleTimeString()}`,
+                                    date: item.createdAt ? item.createdAt.split('T')[0] : 'N/A',
+                                    type: item.type,
+                                    status: item.status,
+                                    amount: `$${item.amount}`,
+                                }
+                            });
+                            if (historyMessage && historyMessage.length > 0) {
+
+                                const awaitingMessage = `📜 Your Transaction History is being prepared...`;
+                                await twilioMessageServices.sendTextMessage(from, awaitingMessage);
+
+                                const user = await userServices.find({ whatsappPhone: from });
+                                const userName = user?.firstName || "there";
+
+                                const imageData = {
+                                    accountHolderName: userName,
+                                    transactionHistory: historyMessage,
+                                };
+                                await twilioMessageServices.sendTransactionFile(from, imageData, '');
+                                await new Promise(resolve => setTimeout(resolve, 3000));
+                                const historyText = `📜 Your Transaction History has been sent as a file.`;
+                                return await twilioMessageServices.goBackTempMessage(from, historyText);
+                            } else {
+                                await twilioMessageServices.goBackTempMessage(from, `📜 No transaction history found.`);
+                                return;
+                            }
+
+                            // await twilioMessageServices.sendTextMessage(from, `📜 Your Transaction History:\n\n${historyMessage}`);
+                            // return await twilioMessageServices.goBackTempMessage(from, `Go back to the main menu.`);
 
                         }
                         return await twilioMessageServices.goBackTempMessage(from, `📜 No transaction history found.`);
