@@ -79,7 +79,6 @@ export default {
                 });
             }
 
-            console.log(result);
             return result.secure_url;
         } catch (error) {
             console.error("Error uploading to Cloudinary:", error);
