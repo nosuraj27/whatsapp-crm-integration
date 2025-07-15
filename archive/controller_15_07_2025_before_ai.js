@@ -7,7 +7,6 @@ import apiError from '../../../helper/apiError';
 import userServices from "../../services/user";
 import crmApiServices from "../../services/crmApi";
 import twilioMessageServices from "../../services/twilioMessage";
-import aiAssistant from "../../services/aiAssistant.js";
 import { apiLogHandler } from "../../../helper/apiLogHandler";
 const prisma = new PrismaClient();
 
@@ -53,78 +52,6 @@ export class userController {
 
                 console.log(`Current session step: ${session.step}`);
 
-                // QUICK ACCESS FUNCTIONALITY - Process natural language commands
-                // Only process messages that are NOT template button identifiers
-                const isTemplateButtonId = msg && (
-                    msg.includes('dashboard_section_option_') ||
-                    msg.includes('menu_list_') ||
-                    msg.includes('bbcorp_') ||
-                    msg.includes('create_trading_account_') ||
-                    msg.includes('transfer_confirmation_') ||
-                    msg === 'english_list' ||
-                    msg === 'language_english' ||
-                    msg === 'language_urdu' ||
-                    msg === 'language_ai' ||
-                    msg === 'confirm' ||
-                    msg === 'restart'
-                );
-
-                if (msg && !buttonPayload && !isTemplateButtonId && session.step !== 'language-selection') {
-                    console.log('Attempting quick access processing...');
-
-                    try {
-                        const quickAccessResult = await aiAssistant.processQuickAccess(msg, session, from);
-
-                        if (quickAccessResult.handled) {
-                            console.log('Quick access handled the request');
-                            if (quickAccessResult.success) {
-                                console.log('Quick access successful');
-                                return; // Exit early, request was handled
-                            } else if (quickAccessResult.error) {
-                                console.log('Quick access failed:', quickAccessResult.error);
-
-                                // If it's a rate limit error, inform the user
-                                if (quickAccessResult.error.includes('Rate limit') || quickAccessResult.error.includes('429')) {
-                                    await twilioMessageServices.goBackTempMessage(from,
-                                        `🤖 AI assistant is temporarily busy. Please try again in a few minutes or use the menu buttons below.`
-                                    );
-                                    // Show menu as fallback
-                                    const user = await userServices.find({ whatsappPhone: from });
-                                    if (user) {
-                                        await twilioMessageServices.mainListTempMessage(from);
-                                    } else {
-                                        await twilioMessageServices.authTempate(from);
-                                    }
-                                    return;
-                                }
-                                // Continue with normal flow as fallback for other errors
-                            } else {
-                                return; // Quick access handled but didn't succeed (e.g., showed help message)
-                            }
-                        } else {
-                            console.log('Quick access did not handle the request, continuing with normal flow');
-                        }
-                    } catch (error) {
-                        console.error('Quick access error:', error);
-
-                        // If AI fails completely, show a helpful message and menu
-                        if (error.message && (error.message.includes('Rate limit') || error.message.includes('429'))) {
-                            await twilioMessageServices.goBackTempMessage(from,
-                                `🤖 AI assistant is currently overloaded. Please use the menu buttons below or try natural language commands again in a few minutes.`
-                            );
-                            // Show menu as fallback
-                            const user = await userServices.find({ whatsappPhone: from });
-                            if (user) {
-                                await twilioMessageServices.mainListTempMessage(from);
-                            } else {
-                                await twilioMessageServices.authTempate(from);
-                            }
-                            return;
-                        }
-                        // Continue with normal flow as fallback for other errors
-                    }
-                }
-
                 //NOTE LANGUAGE SELECTION AND MAIN MENU FLOW
                 if (session.step === 'language-selection') {
                     if (['english_list', 'language_english',].includes(buttonPayload || msg?.toLowerCase())) {
@@ -148,7 +75,7 @@ export class userController {
                         return await twilioMessageServices.languageTempMessage(from);
                     }
                     else {
-                        await twilioMessageServices.sendTextMessage(from, `❌ Sorry, Please select any language to continue.`);
+                        await twilioMessageServices.sendTextMessage(from, `❌ Sorry, only English is supported at the moment. Please select English to continue.`);
                         session.step = 'language-selection';
                         await _saveSessionToDb(from, session);
                         return await twilioMessageServices.languageTempMessage(from);
@@ -728,143 +655,6 @@ export class userController {
 
                     session.data.depositAmount = amount;
                     await processDepositTransaction(from, session);
-                    return;
-                }
-
-                // Handle quick access deposit when only amount was provided initially
-                else if (session.step === 'dashboard-deposit-options' && session.data?.quickAccessAmount) {
-                    const wallets = await crmApiServices.getWallet(from);
-                    if (!wallets || wallets.length === 0) {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ You don't have any wallets available for deposit. Please create a wallet first.`);
-                        return;
-                    }
-
-                    session.data.walletId = wallets[0]?._id || "";
-                    const paymentGateways = await crmApiServices.getPaymentGateway(from);
-
-                    if (['dashboard_section_option_deposit_match2pay'].includes(buttonPayload || msg?.toLowerCase())) {
-                        const match2pay = paymentGateways.find(gateway => gateway.uniqueName === 'match2pay');
-                        if (!match2pay) {
-                            await twilioMessageServices.goBackTempMessage(from, `❌ Match2Pay payment option is not available.`);
-                            return;
-                        }
-
-                        session.data.selectedPaymentGateway = match2pay._id;
-                        session.data.selectedPaymentGatewayName = 'match2pay';
-                        session.data.depositAmount = session.data.quickAccessAmount;
-
-                        // Process the deposit immediately since we have all info
-                        await processDepositTransaction(from, session);
-                        return;
-                    }
-                    else if (['dashboard_section_option_deposit_whishMoney'].includes(buttonPayload || msg?.toLowerCase())) {
-                        const whishMoney = paymentGateways.find(gateway => gateway.uniqueName === 'whishMoney');
-                        if (!whishMoney) {
-                            await twilioMessageServices.goBackTempMessage(from, `❌ Whish Money payment option is not available.`);
-                            return;
-                        }
-
-                        session.data.selectedPaymentGateway = whishMoney._id;
-                        session.data.selectedPaymentGatewayName = 'whishMoney';
-                        session.data.depositAmount = session.data.quickAccessAmount;
-
-                        // Process the deposit immediately since we have all info
-                        await processDepositTransaction(from, session);
-                        return;
-                    }
-                    else if (['dashboard_section_option_deposit_go_back'].includes(buttonPayload || msg?.toLowerCase())) {
-                        delete session.data.quickAccessAmount;
-                        session.step = 'main-menu';
-                        await _saveSessionToDb(from, session);
-                        return await twilioMessageServices.mainListTempMessage(from);
-                    }
-                }
-
-                // Handle quick access amount input when payment method was provided first
-                else if (session.step === 'quick-deposit-amount-input') {
-                    const amount = parseFloat(msg.replace(/[^\d.]/g, ''));
-                    if (isNaN(amount) || amount < 10) {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ Please enter a valid amount (minimum $10).`);
-                        return;
-                    }
-
-                    // Now we have both amount and payment method, process the deposit
-                    const wallets = await crmApiServices.getWallet(from);
-                    const paymentGateways = await crmApiServices.getPaymentGateway(from);
-                    const gateway = paymentGateways.find(g =>
-                        g.uniqueName.toLowerCase() === session.data.selectedPaymentGatewayName.toLowerCase()
-                    );
-
-                    if (gateway) {
-                        session.data.walletId = wallets[0]._id;
-                        session.data.selectedPaymentGateway = gateway._id;
-                        session.data.depositAmount = amount;
-                        await processDepositTransaction(from, session);
-                    } else {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ Payment method not available.`);
-                    }
-                    return;
-                }
-
-                // Handle quick access withdraw amount input
-                else if (session.step === 'quick-withdraw-amount-input') {
-                    const amount = parseFloat(msg.replace(/[^\d.]/g, ''));
-                    const wallet = await crmApiServices.getWallet(from);
-                    const balance = wallet && wallet.length > 0 ? wallet[0].balance : 0;
-
-                    if (isNaN(amount) || amount <= 0) {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ Please enter a valid amount.`);
-                        return;
-                    }
-
-                    if (amount > balance) {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ Your current balance ($${balance}) is less than the requested amount ($${amount}).`);
-                        return;
-                    }
-
-                    // Process withdrawal with the provided payment method and amount
-                    const paymentGateways = await crmApiServices.getPaymentGateway(from);
-                    const gateway = paymentGateways.find(g =>
-                        g.uniqueName.toLowerCase() === session.data.selectedPaymentGatewayName.toLowerCase()
-                    );
-
-                    if (gateway) {
-                        session.data.walletId = wallet[0]._id;
-                        session.data.selectedPaymentGateway = gateway._id;
-                        session.data.withdrawAmount = amount;
-                        await processWithdrawalTransaction(from, session);
-                    } else {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ Withdrawal method not available.`);
-                    }
-                    return;
-                }
-
-                // Handle quick access create account name input
-                else if (session.step === 'quick-create-account-name') {
-                    const accountName = msg.trim();
-                    if (!accountName || accountName.length < 2) {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ Please provide a valid account name (at least 2 characters).`);
-                        return;
-                    }
-
-                    try {
-                        const accountData = {
-                            name: accountName,
-                            balance: session.data.accountType === 'demo' ? 10000 : 0
-                        };
-
-                        const result = await crmApiServices.createTradingAccount(from, session.data.accountType, accountData);
-
-                        await twilioMessageServices.sendTextMessage(from,
-                            `✅ ${session.data.accountType === 'demo' ? 'Demo' : 'Real'} account created successfully: ${accountName}`
-                        );
-
-                        session.step = 'main-menu';
-                        await _saveSessionToDb(from, session);
-                        await twilioMessageServices.mainListTempMessage(from);
-                    } catch (error) {
-                        await twilioMessageServices.goBackTempMessage(from, `❌ Failed to create account: ${error.message}`);
-                    }
                     return;
                 }
 
@@ -1500,77 +1290,15 @@ export class userController {
 
                 // NOTE HOW TO USE FLOW
                 else if (['menu_list_how_to_use'].includes(buttonPayload || msg?.toLowerCase())) {
-                    // Enhanced how to use message with AI and template information
-                    const detectedLanguage = await aiAssistant.detectLanguage(msg || '');
-
-                    const howToUseMessage = detectedLanguage === 'arabic'
-                        ? `📖 *دليل الاستخدام - BBCorp WhatsApp Bot*\n\n` +
-                        `🤖 *الذكاء الاصطناعي المدمج:*\n` +
-                        `يمكنك التحدث معي بلغتك المفضلة:\n` +
-                        `• العربية: "أريد إيداع 100 دولار"\n` +
-                        `• English: "Check my balance"\n` +
-                        `• हिंदी: "मेरा बैलेंस दिखाओ" (English response)\n\n` +
-
-                        `💰 *العمليات المالية:*\n` +
-                        `• إيداع: "إيداع 50 دولار باستخدام wishmoney"\n` +
-                        `• سحب: "سحب 25 دولار إلى match2pay"\n` +
-                        `• تحويل: "تحويل 30 دولار إلى user@email.com"\n` +
-                        `• الرصيد: "أظهر رصيدي"\n\n` +
-
-                        `📱 *إدارة الحساب:*\n` +
-                        `• تسجيل دخول: "تسجيل الدخول email@test.com password123"\n` +
-                        `• إنشاء حساب: "إنشاء حساب تجريبي اسمه Test"\n` +
-                        `• معلومات الحساب: "معلومات حسابي"\n` +
-                        `• التحقق: "فحص التحقق"\n\n` +
-
-                        `🎯 *الأوامر السريعة:*\n` +
-                        `• القائمة: "القائمة"\n` +
-                        `• المساعدة: "أحتاج مساعدة"\n` +
-                        `• الخروج: "تسجيل خروج"\n` +
-                        `• الإحالة: "ربح من الإحالة"\n\n` +
-
-                        `🔘 *أزرار القوالب:*\n` +
-                        `يمكنك أيضاً استخدام الأزرار التفاعلية التي تظهر في المحادثة.\n\n` +
-
-                        `🌐 *دعم متعدد اللغات:*\n` +
-                        `النظام يفهم العربية، الإنجليزية، والهندية تلقائياً.\n\n` +
-
-                        `📞 *الدعم:*\n` +
-                        `للمساعدة الإضافية، اكتب "دعم" أو "support"`
-                        : `📖 *How to Use - BBCorp WhatsApp Bot*\n\n` +
-                        `🤖 *AI Assistant Features:*\n` +
-                        `You can talk to me in your preferred language:\n` +
-                        `• Arabic: "أريد إيداع 100 دولار"\n` +
-                        `• English: "Check my balance"\n` +
-                        `• Hindi: "मेरा बैलेंस दिखाओ" (English response)\n\n` +
-
-                        `💰 *Financial Operations:*\n` +
-                        `• Deposit: "Deposit 50 USD using wishmoney"\n` +
-                        `• Withdraw: "Withdraw 25 USD to match2pay"\n` +
-                        `• Transfer: "Transfer 30 USD to user@email.com"\n` +
-                        `• Balance: "Show my balance"\n\n` +
-
-                        `📱 *Account Management:*\n` +
-                        `• Login: "Login email@test.com password123"\n` +
-                        `• Create Account: "Create demo account named Test"\n` +
-                        `• Account Info: "My account info"\n` +
-                        `• Verification: "Check verification"\n\n` +
-
-                        `🎯 *Quick Commands:*\n` +
-                        `• Menu: "Show menu"\n` +
-                        `• Support: "Need help"\n` +
-                        `• Logout: "Logout"\n` +
-                        `• Referral: "Refer and earn"\n\n` +
-
-                        `🔘 *Template Buttons:*\n` +
-                        `You can also use the interactive buttons that appear in the chat.\n\n` +
-
-                        `🌐 *Multi-Language Support:*\n` +
-                        `The system automatically detects Arabic, English, and Hindi.\n\n` +
-
-                        `📞 *Support:*\n` +
-                        `For additional help, type "support" or "مساعدة"`;
-
+                    // sedn how to use message
+                    const howToUseMessage = `📖 How to Use BBCorp Whatsapp Trading Portal:\n\n` +
+                        `1. *Login/Signup*: Start by logging in with your email and password or sign up if you are a new user.\n` +
+                        `2. *KYC Verification*: Complete the KYC process to verify your identity.\n` +
+                        `3. *Create Trading Account*: Create a trading account to start trading.\n` +
+                        `4. *Deposit Funds*: Deposit funds into your account using USDT or WHISH.\n` +
+                        `5. *Trade*: Start trading with your funds.\n` +
+                        `6. *Withdraw/Transfer*: Withdraw your profits or transfer funds between accounts.\n\n` +
+                        `For any assistance, type "SUPPORT" to contact our support team.`;
                     await twilioMessageServices.goBackTempMessage(from, howToUseMessage);
                     return;
                 }
@@ -1636,9 +1364,7 @@ export class userController {
                     }
                 }
 
-                // Handle unknown commands/messages when not in a specific flow step
-                else if (!buttonPayload && msg) {
-                    // Only handle text messages that are not button payloads
+                else {
                     const user = await userServices.find({ whatsappPhone: from });
                     if (user) {
                         const loginRes = await crmApiServices.login(from, user.email, user.password);
@@ -1654,13 +1380,6 @@ export class userController {
                     await twilioMessageServices.goBackTempMessage(from, `❓ Sorry, I didn't understand that or your session may have expired. Please restart.`);
                     session.step = 'language-selection';
                     await _saveSessionToDb(from, session);
-                    return;
-                }
-
-                // Handle unrecognized button payloads
-                else if (buttonPayload) {
-                    console.log(`Unhandled button payload: ${buttonPayload}`);
-                    await twilioMessageServices.goBackTempMessage(from, `❓ That option isn't available right now. Please try again or restart by typing 'hi'.`);
                     return;
                 }
 
