@@ -367,7 +367,12 @@ class AIAssistant {
             }
 
             // Get payment gateways
+            // const paymentGateways = await crmApiServices.getPaymentGateway(from);
             const paymentGateways = await crmApiServices.getPaymentGateway(from);
+            if (!paymentGateways || paymentGateways.length === 0) {
+                await twilioMessageServices.goBackTempMessage(from, `❌ No payment gateways are available at the moment. Please try again later.`);
+                return { handled: true, success: false };
+            }
             const gateway = paymentGateways.find(g =>
                 g.uniqueName.toLowerCase() === params.paymentMethod.toLowerCase() ||
                 g.uniqueName.toLowerCase().includes(params.paymentMethod.toLowerCase())
@@ -392,14 +397,21 @@ class AIAssistant {
             const response = await crmApiServices.createTransaction(from, depositPayload);
 
             if (gateway.uniqueName === 'match2pay' && response.url) {
-                const message = language === 'arabic'
-                    ? `🎉 تم إنشاء طلب الإيداع بقيمة $${params.amount} بنجاح.\n\n📱 استخدم هذا الرابط لإتمام الدفع:\n${response.url}\n\n⏱️ هذا الرابط صالح لمدة 10 دقائق.`
-                    : `🎉 Your deposit request of $${params.amount} has been created successfully.\n\n📱 Use this link to complete payment:\n${response.url}\n\n⏱️ This link is active for 10 minutes.`;
-                await twilioMessageServices.sendTextMessage(from, message);
+                await twilioMessageServices.goBackTempMessage(from,
+                    `🎉 Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\n` +
+                    `📱 *Ready to complete your payment?* Just using this link:\n${response.url}\n\n` +
+                    `⏱️ This link will be active for 10 minutes - quick and easy!`
+                );
+            } else if (gateway.uniqueName === 'whishMoney' && response.url) {
+                await twilioMessageServices.goBackTempMessage(from,
+                    `🎉 Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\n` +
+                    `📱 *Ready to complete your payment?* Just using this link:\n${response.url}\n\n` +
+                    `⏱️ This link will be active for 10 minutes - quick and easy!`
+                );
             } else {
                 const message = language === 'arabic'
-                    ? `✅ تم إنشاء طلب الإيداع بقيمة $${params.amount} بنجاح.`
-                    : `✅ Deposit request of $${params.amount} created successfully.`;
+                    ? `✅ تم إنشاء طلب الإيداع بنجاح بمبلغ $${params.amount}.`
+                    : `✅ Deposit request created successfully for $${params.amount}.`;
                 await twilioMessageServices.sendTextMessage(from, message);
             }
 
