@@ -494,12 +494,12 @@ class AIAssistant {
             if (history && history.transactions && history.transactions.length > 0) {
                 const imageData = {
                     accountHolderName: userName,
-                    transactionHistory: history.transactions.slice(0, 10).map((txn, i) => ({
-                        sn: i + 1,
-                        date: new Date(txn.createdAt).toLocaleDateString(),
-                        type: txn.transactionType,
-                        status: txn.status,
-                        amount: `$${txn.amount}`
+                    transactionHistory: history.transactions.map((item, index) => ({
+                        sn: index + 1,
+                        date: item.createdAt ? item.createdAt.split('T')[0] : 'N/A',
+                        type: item.type,
+                        status: item.status,
+                        amount: `$${item.amount}`,
                     }))
                 };
 
@@ -890,6 +890,8 @@ class AIAssistant {
 
             // Show appropriate menu
             if (await this.checkAuthentication(from)) {
+                session.step = 'main-menu';
+                await this.saveSession(from, session);
                 await twilioMessageServices.mainListTempMessage(from);
             } else {
                 await twilioMessageServices.authTempate(from);
@@ -1052,6 +1054,8 @@ class AIAssistant {
 
             // Show appropriate menu based on authentication
             if (await this.checkAuthentication(from)) {
+                session.step = 'main-menu';
+                await this.saveSession(from, session);
                 await twilioMessageServices.mainListTempMessage(from);
             } else {
                 await twilioMessageServices.authTempate(from);
