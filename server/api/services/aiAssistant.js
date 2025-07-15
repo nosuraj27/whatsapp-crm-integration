@@ -318,7 +318,7 @@ class AIAssistant {
                     ? `💰 رائع! تريد إيداع $${params.amount}. يرجى اختيار طريقة الدفع:`
                     : `💰 Great! You want to deposit $${params.amount}. Please select your payment method:`;
 
-                await twilioMessageServices.sendTextMessage(from, message);
+                // await twilioMessageServices.sendTextMessage(from, message);
                 await twilioMessageServices.deshboardDepositTempMessage(from);
                 return { handled: true, success: true };
             } else if (!params.amount && params.paymentMethod) {
@@ -398,13 +398,13 @@ class AIAssistant {
 
             if (gateway.uniqueName === 'match2pay' && response.url) {
                 await twilioMessageServices.goBackTempMessage(from,
-                    `🎉 Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\n` +
+                    `🎉 Your deposit request of *$${params.amount}* has been created successfully.\n\n` +
                     `📱 *Ready to complete your payment?* Just using this link:\n${response.url}\n\n` +
                     `⏱️ This link will be active for 10 minutes - quick and easy!`
                 );
             } else if (gateway.uniqueName === 'whishMoney' && response.url) {
                 await twilioMessageServices.goBackTempMessage(from,
-                    `🎉 Your deposit request of *$${session.data.depositAmount}* has been created successfully.\n\n` +
+                    `🎉 Your deposit request of *$${params.amount}* has been created successfully.\n\n` +
                     `📱 *Ready to complete your payment?* Just using this link:\n${response.url}\n\n` +
                     `⏱️ This link will be active for 10 minutes - quick and easy!`
                 );
@@ -570,7 +570,7 @@ class AIAssistant {
                     ? `رائع! تريد إنشاء حساب باسم "${params.name}". يرجى اختيار نوع الحساب:`
                     : `Great! You want to create an account named "${params.name}". Please select account type:`;
 
-                await twilioMessageServices.sendTextMessage(from, message);
+                // await twilioMessageServices.sendTextMessage(from, message);
                 await twilioMessageServices.createTradingAccountTempMessage(from);
                 return { handled: true, success: true };
             } else {
