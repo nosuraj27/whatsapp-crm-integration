@@ -56,6 +56,11 @@ class AIAssistant {
                     return await this.handleQuickSupport({}, session, from, detectedLanguage);
                 }
 
+                return await twilioMessageServices.goBackTempMessage(
+                    from,
+                    '⚙️ We\'re currently experiencing an issue with our AI assistance. Please use the WhatsApp template feature for help at this time. Thank you for your understanding! 🙏'
+                );
+                return { handled: false, error: analysis.message };
                 return { handled: false, error: analysis.message };
             }
 
@@ -1193,8 +1198,9 @@ class AIAssistant {
                 return await this.analyzeWithAI(message, session, isAuthenticated, detectedLanguage);
             } catch (error) {
                 console.warn('AI analysis failed, falling back to pattern matching:', error.message);
+                return { status: "error", message: "AI analysis failed, falling back to pattern matching." };
                 // Fallback to pattern matching
-                return await this.analyzeWithPatterns(message, session, isAuthenticated, detectedLanguage);
+                // return await this.analyzeWithPatterns(message, session, isAuthenticated, detectedLanguage);
             }
 
         } catch (error) {
