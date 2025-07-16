@@ -4,8 +4,12 @@ import crmApiServices from './crmApi.js';
 import twilioMessageServices from './twilioMessage.js';
 import userServices from './user.js';
 
+// AI Provider Configuration
+const AI_PROVIDER = process.env.AI_PROVIDER || 'groq'; // 'groq' or 'openai'
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
 class AIAssistant {
     constructor() {
@@ -15,6 +19,10 @@ class AIAssistant {
             'support', 'greeting', 'account_info', 'payment_methods',
             'check_verification', 'logout', 'menu', 'how_to_use'
         ];
+
+        // Log AI provider configuration on startup
+        console.log(`AI Assistant initialized with provider: ${AI_PROVIDER.toUpperCase()}`);
+        console.log(`Model: ${this.getModelName()}`);
     }
 
     // Detect language from message content
@@ -1381,8 +1389,8 @@ class AIAssistant {
             { role: "user", content: message }
         ];
 
-        const response = await this.callGroqAPI({
-            model: "llama-3.1-8b-instant",
+        const response = await this.callAI({
+            model: this.getModelName(),
             messages,
             response_format: { type: "json_object" },
             temperature: 0.1
@@ -1451,14 +1459,50 @@ class AIAssistant {
         }
     }
 
-    async callGroqAPI(payload, retries = 2) {
+    // Get the appropriate model name based on provider
+    getModelName() {
+        switch (AI_PROVIDER.toLowerCase()) {
+            case 'openai':
+                return 'gpt-3.5-turbo'; // or 'gpt-4' if you prefer
+            case 'groq':
+            default:
+                return 'llama-3.1-8b-instant';
+        }
+    }
+
+    // Get API configuration based on provider
+    getAPIConfig() {
+        switch (AI_PROVIDER.toLowerCase()) {
+            case 'openai':
+                return {
+                    baseUrl: OPENAI_BASE_URL,
+                    apiKey: OPENAI_API_KEY,
+                    provider: 'openai'
+                };
+            case 'groq':
+            default:
+                return {
+                    baseUrl: GROQ_BASE_URL,
+                    apiKey: GROQ_API_KEY,
+                    provider: 'groq'
+                };
+        }
+    }
+
+    async callAI(payload, retries = 2) {
+        const config = this.getAPIConfig();
+
+        if (!config.apiKey) {
+            throw new Error(`${config.provider.toUpperCase()} API key is not configured. Please set ${config.provider.toUpperCase()}_API_KEY environment variable.`);
+        }
+
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
-                const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+                const response = await fetch(`${config.baseUrl}/chat/completions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${GROQ_API_KEY}`
+                        'Authorization': `Bearer ${config.apiKey}`
                     },
                     body: JSON.stringify(payload)
                 });
@@ -1468,37 +1512,37 @@ class AIAssistant {
                         if (attempt < retries) {
                             // Exponential backoff: wait 2^attempt seconds
                             const waitTime = Math.pow(2, attempt) * 1000;
-                            console.log(`Rate limit hit, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
+                            console.log(`Rate limit hit on ${config.provider.toUpperCase()}, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
                             await new Promise(resolve => setTimeout(resolve, waitTime));
                             continue;
                         }
-                        throw new Error(`Rate limit exceeded. Please try again in a few minutes.`);
+                        throw new Error(`Rate limit exceeded on ${config.provider.toUpperCase()}. Please try again in a few minutes.`);
                     } else if (response.status === 401) {
-                        throw new Error(`Invalid API key or authentication failed.`);
+                        throw new Error(`Invalid API key or authentication failed for ${config.provider.toUpperCase()}.`);
                     } else if (response.status >= 500) {
                         if (attempt < retries) {
                             const waitTime = 1000 * (attempt + 1);
-                            console.log(`Server error ${response.status}, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
+                            console.log(`${config.provider.toUpperCase()} server error ${response.status}, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
                             await new Promise(resolve => setTimeout(resolve, waitTime));
                             continue;
                         }
-                        throw new Error(`Groq API server error: ${response.status}. Please try again later.`);
+                        throw new Error(`${config.provider.toUpperCase()} API server error: ${response.status}. Please try again later.`);
                     } else {
-                        throw new Error(`Groq API error: ${response.status} - ${response.statusText}`);
+                        throw new Error(`${config.provider.toUpperCase()} API error: ${response.status} - ${response.statusText}`);
                     }
                 }
 
                 return await response.json();
             } catch (error) {
                 if (attempt === retries) {
-                    console.error('Groq API call failed after all retries:', error);
+                    console.error(`${config.provider.toUpperCase()} API call failed after all retries:`, error);
                     throw error;
                 }
 
                 // If it's a network error, retry
                 if (error.name === 'TypeError' || error.code === 'ECONNRESET') {
                     const waitTime = 1000 * (attempt + 1);
-                    console.log(`Network error, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
+                    console.log(`Network error with ${config.provider.toUpperCase()}, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                     continue;
                 }
