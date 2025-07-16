@@ -60,6 +60,7 @@ class AIAssistant {
                     from,
                     '⚙️ We\'re currently experiencing an issue with our AI assistance. Please use the WhatsApp template feature for help at this time. Thank you for your understanding! 🙏'
                 );
+
                 return { handled: false, error: analysis.message };
                 return { handled: false, error: analysis.message };
             }
